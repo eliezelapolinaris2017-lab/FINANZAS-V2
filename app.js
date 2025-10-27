@@ -1,12 +1,6 @@
-// app.js — versión estable SOLO-JS (mantiene diseño y estructura existentes)
-// - Firebase Auth + Firestore (autosync push/pull/subscripción)
-// - Edición por fila en TODAS las vistas
-// - Gastos Diarios: añade categorías “Equipos” y “Materiales” sin tocar HTML
-// - Métodos: añade “ATH Móvil” y “Cheque”
-// - Balance correcto (gastos diarios + personales + pagos + ordinarios generados)
-// - Exportación a PDF REAL (blanco y negro) con jsPDF (carga dinámica por CDN)
-// - Protecciones de DOM (no falla si falta algún ID)
+// app.js — formularios y balances ARRIBA, edición por fila, Firebase+Firestore, PDF B/N con jsPDF
 
+/* ===================== Firebase ===================== */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js";
 import {
   getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult,
@@ -16,7 +10,6 @@ import {
   getFirestore, doc, getDoc, setDoc, onSnapshot, serverTimestamp, enableIndexedDbPersistence
 } from "https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js";
 
-/* ====== Firebase (tu proyecto) ====== */
 const firebaseConfig = {
   apiKey: "AIzaSyC66vv3-yaap1mV2n1GXRUopLqccobWqRE",
   authDomain: "finanzas-web-f4e05.firebaseapp.com",
@@ -30,13 +23,11 @@ const auth  = getAuth(fbApp);
 const db    = getFirestore(fbApp);
 enableIndexedDbPersistence(db).catch(()=>{});
 
-/* ====== Estado / Utilidades ====== */
+/* ===================== Estado / Utils ===================== */
 const STORAGE_KEY = 'finanzas-state-v2';
 const LOCK_KEY = 'finanzas-lock-v2';
-const SCHEMA_VERSION = 2;
 
 const DEFAULT_STATE = {
-  _version: SCHEMA_VERSION,
   settings: {
     businessName: 'Mi Negocio',
     logoBase64: '',
@@ -94,7 +85,7 @@ function uid(){ return Math.random().toString(36).slice(2,9)+Date.now().toString
 const toDate = s=> new Date(s);
 function inRange(d, from, to){ const t=+toDate(d); if(from && t<+toDate(from)) return false; if(to && t>(+toDate(to)+86400000-1)) return false; return true; }
 
-/* ====== Catálogos ====== */
+/* ===================== Catálogos ===================== */
 const EXPENSE_CATEGORIES = [
   "Gasolina","Comida","Transporte","Mantenimiento","Renta/Alquiler",
   "Servicios (Luz/Agua/Internet)","Insumos","Nómina","Impuestos","Herramientas",
@@ -120,13 +111,12 @@ function initCatalogs(){
   safely(()=> upsertOptions($('#incMethod'), PAYMENT_METHODS));
 }
 
-/* ====== Tema/Router (no cambia tu diseño) ====== */
+/* ===================== Tema/Router ===================== */
 function applyTheme(){
   const r = document.documentElement;
   r?.style?.setProperty('--primary', state.settings.theme.primary);
   r?.style?.setProperty('--accent', state.settings.theme.accent);
   r?.style?.setProperty('--text', state.settings.theme.text);
-
   $('#brandName') && ($('#brandName').textContent = state.settings.businessName || 'Mi Negocio');
 
   const FALLBACK_LOGO = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128"><rect width="100%25" height="100%25" fill="%230b0b0e"/><circle cx="64" cy="64" r="40" fill="%23C7A24B"/></svg>';
@@ -157,7 +147,7 @@ function wireNav(){
   $('#menuToggle')?.addEventListener('click', ()=> sidebar?.classList.toggle('open'));
 }
 
-/* ====== Login/PIN ====== */
+/* ===================== Login/PIN ===================== */
 async function sha256(msg){
   const enc = new TextEncoder().encode(msg);
   const buf = await crypto.subtle.digest('SHA-256', enc);
@@ -195,7 +185,7 @@ function updateLoginUI(){
   $('#loginBtn')?.addEventListener('click', handleLogin);
 }
 
-/* ====== Helpers edición ====== */
+/* ===================== Helpers edición ===================== */
 function ask(current, label){
   const v = prompt(label, current ?? '');
   if(v === null) return { cancelled: true, value: current };
@@ -209,7 +199,7 @@ function askNumber(current, label){
   return { cancelled:false, value: n };
 }
 
-/* ====== GASTOS DIARIOS ====== */
+/* ===================== GASTOS DIARIOS ===================== */
 function renderExpenses(){
   const tbody = $('#expensesTable tbody'); if(!tbody) return;
   tbody.innerHTML='';
@@ -228,9 +218,13 @@ function renderExpenses(){
     total+=Number(e.amount||0);
     cats[e.category]=(cats[e.category]||0)+Number(e.amount||0);
   });
-  $('#expensesTotal') && ($('#expensesTotal').textContent = fmt(total));
-  const wrap = $('#expCategoryTotals'); 
-  if(wrap){ wrap.innerHTML=''; Object.entries(cats).forEach(([k,v])=>{ const s=document.createElement('span'); s.className='pill'; s.textContent=`${k}: ${fmt(v)}`; wrap.appendChild(s);}); }
+
+  // resumen arriba
+  $('#expSumTotal') && ($('#expSumTotal').textContent = fmt(total));
+  const pills = $('#expSumPills');
+  if(pills){ pills.innerHTML=''; Object.entries(cats).forEach(([k,v])=>{ const s=document.createElement('span'); s.className='pill'; s.textContent=`${k}: ${fmt(v)}`; pills.appendChild(s);}); }
+
+  // acciones
   $$('#expensesTable [data-del]').forEach(b=> b.onclick=()=>{ state.expensesDaily = state.expensesDaily.filter(x=>x.id!==b.dataset.del); save(); toast('Gasto eliminado'); });
   $$('#expensesTable [data-edit]').forEach(b=> b.onclick=()=> editExpense(b.dataset.edit));
 }
@@ -257,13 +251,10 @@ function wireExpenses(){
     state.expensesDaily.push(rec); save(); toast('Gasto guardado'); ev.target.reset();
   });
   $('#fExpApply')?.addEventListener('click', renderExpenses);
-  $('#addExpense')?.addEventListener('click', ()=>{
-    if($('#expDate')) $('#expDate').value = todayStr();
-    $('#expAmount')?.focus(); $('#expenseForm')?.scrollIntoView({behavior:'smooth'});
-  });
+  $('#addExpense')?.addEventListener('click', ()=>{ if($('#expDate')) $('#expDate').value = todayStr(); $('#expAmount')?.focus(); });
 }
 
-/* ====== INGRESOS ====== */
+/* ===================== INGRESOS ===================== */
 function renderIncomes(){
   const tbody = $('#incomesTable tbody'); if(!tbody) return; tbody.innerHTML='';
   const from = $('#fIncFrom')?.value, to = $('#fIncTo')?.value; let total=0;
@@ -278,7 +269,7 @@ function renderIncomes(){
       </td>`;
     tbody.appendChild(tr); total+=Number(r.amount||0);
   });
-  $('#incomesTotal') && ($('#incomesTotal').textContent = fmt(total));
+  $('#incSumTotal') && ($('#incSumTotal').textContent = fmt(total));
   $$('#incomesTable [data-del]').forEach(b=> b.onclick=()=>{ state.incomesDaily = state.incomesDaily.filter(x=>x.id!==b.dataset.del); save(); toast('Ingreso eliminado'); });
   $$('#incomesTable [data-edit]').forEach(b=> b.onclick=()=> editIncome(b.dataset.edit));
 }
@@ -299,13 +290,10 @@ function wireIncomes(){
     state.incomesDaily.push(rec); save(); toast('Ingreso guardado'); ev.target.reset();
   });
   $('#fIncApply')?.addEventListener('click', renderIncomes);
-  $('#addIncome')?.addEventListener('click', ()=>{
-    if($('#incDate')) $('#incDate').value = todayStr();
-    $('#incAmount')?.focus(); $('#incomeForm')?.scrollIntoView({behavior:'smooth'});
-  });
+  $('#addIncome')?.addEventListener('click', ()=>{ if($('#incDate')) $('#incDate').value = todayStr(); $('#incAmount')?.focus(); });
 }
 
-/* ====== PAGOS ====== */
+/* ===================== PAGOS ===================== */
 function renderPayments(){
   const tbody = $('#paymentsTable tbody'); if(!tbody) return; tbody.innerHTML='';
   const totals = { Pendiente:0, Pagado:0 };
@@ -321,8 +309,11 @@ function renderPayments(){
     tbody.appendChild(tr);
     totals[p.status] = (totals[p.status]||0) + Number(p.amount||0);
   });
-  const wrap = $('#payTotals'); 
-  if(wrap){ wrap.innerHTML=''; Object.entries(totals).forEach(([k,v])=>{ const s=document.createElement('span'); s.className='pill'; s.textContent=`${k}: ${fmt(v)}`; wrap.appendChild(s);}); }
+  const pend = totals['Pendiente']||0, paid = totals['Pagado']||0, all = pend+paid;
+  $('#paySumPend') && ($('#paySumPend').textContent = fmt(pend));
+  $('#paySumPaid') && ($('#paySumPaid').textContent = fmt(paid));
+  $('#paySumAll')  && ($('#paySumAll').textContent  = fmt(all));
+
   $$('#paymentsTable [data-del]').forEach(b=> b.onclick=()=>{ state.payments = state.payments.filter(x=>x.id!==b.dataset.del); save(); toast('Pago eliminado'); });
   $$('#paymentsTable [data-edit]').forEach(b=> b.onclick=()=> editPayment(b.dataset.edit));
 }
@@ -343,13 +334,10 @@ function wirePayments(){
     if(!rec.date) return toast('Fecha requerida');
     state.payments.push(rec); save(); toast('Pago guardado'); ev.target.reset();
   });
-  $('#addPayment')?.addEventListener('click', ()=>{
-    if($('#payDate')) $('#payDate').value = todayStr();
-    $('#payAmount')?.focus(); $('#paymentForm')?.scrollIntoView({behavior:'smooth'});
-  });
+  $('#addPayment')?.addEventListener('click', ()=>{ if($('#payDate')) $('#payDate').value = todayStr(); $('#payAmount')?.focus(); });
 }
 
-/* ====== ORDINARIOS (recurrentes) ====== */
+/* ===================== ORDINARIOS ===================== */
 function renderOrdinary(){
   const tbody = $('#ordinaryTable tbody'); if(!tbody) return; tbody.innerHTML='';
   state.ordinary.forEach(o=>{
@@ -362,6 +350,12 @@ function renderOrdinary(){
       </td>`;
     tbody.appendChild(tr);
   });
+
+  // resumen arriba
+  $('#ordSumCount') && ($('#ordSumCount').textContent = state.ordinary.length.toString());
+  const next = state.ordinary.map(o=>o.next).filter(Boolean).sort()[0] || '—';
+  $('#ordSumNext') && ($('#ordSumNext').textContent = next);
+
   $$('#ordinaryTable [data-del]').forEach(b=> b.onclick=()=>{ state.ordinary = state.ordinary.filter(x=>x.id!==b.dataset.del); save(); toast('Recurrente eliminado'); });
   $$('#ordinaryTable [data-edit]').forEach(b=> b.onclick=()=> editOrdinary(b.dataset.edit));
 }
@@ -381,10 +375,7 @@ function wireOrdinary(){
     if(!rec.next) return toast('Próxima fecha requerida');
     state.ordinary.push(rec); save(); toast('Recurrente guardado'); ev.target.reset();
   });
-  $('#addOrd')?.addEventListener('click', ()=>{
-    if($('#ordNext')) $('#ordNext').value = todayStr();
-    $('#ordAmount')?.focus(); $('#ordinaryForm')?.scrollIntoView({behavior:'smooth'});
-  });
+  $('#addOrd')?.addEventListener('click', ()=>{ if($('#ordNext')) $('#ordNext').value = todayStr(); $('#ordAmount')?.focus(); });
 }
 function autoGenerateOrdinary(){
   const today = todayStr(); let changed=false;
@@ -402,7 +393,7 @@ function autoGenerateOrdinary(){
   if(changed) save();
 }
 
-/* ====== PRESUPUESTOS ====== */
+/* ===================== PRESUPUESTOS ===================== */
 function spendByCategory(cat){ return state.expensesDaily.filter(e=>e.category===cat).reduce((a,b)=>a+Number(b.amount||0),0); }
 function renderBudgets(){
   const wrap = $('#budgetBars'); if(!wrap) return; wrap.innerHTML='';
@@ -435,10 +426,10 @@ function wireBudgets(){
     const rec = { id:uid(), category: $('#budCategory')?.value, limit: Number($('#budLimit')?.value||0) };
     state.budgets.push(rec); save(); toast('Presupuesto guardado'); ev.target.reset();
   });
-  $('#addBudget')?.addEventListener('click', ()=>{ $('#budCategory')?.focus(); $('#budgetForm')?.scrollIntoView({behavior:'smooth'}); });
+  $('#addBudget')?.addEventListener('click', ()=>{ $('#budCategory')?.focus(); });
 }
 
-/* ====== GASTOS PERSONALES ====== */
+/* ===================== GASTOS PERSONALES ===================== */
 function renderPersonal(){
   const tbody = $('#personalTable tbody'); if(!tbody) return; tbody.innerHTML=''; let total=0;
   state.personal.forEach(p=>{
@@ -451,7 +442,7 @@ function renderPersonal(){
       </td>`;
     tbody.appendChild(tr); total+=Number(p.amount||0);
   });
-  $('#personalTotal') && ($('#personalTotal').textContent = fmt(total));
+  $('#perSumTotal') && ($('#perSumTotal').textContent = fmt(total));
   $$('#personalTable [data-del]').forEach(b=> b.onclick=()=>{ state.personal = state.personal.filter(x=>x.id!==b.dataset.del); save(); toast('Gasto personal eliminado'); });
   $$('#personalTable [data-edit]').forEach(b=> b.onclick=()=> editPersonal(b.dataset.edit));
 }
@@ -471,13 +462,10 @@ function wirePersonal(){
     if(!rec.date) return toast('Fecha requerida');
     state.personal.push(rec); save(); toast('Gasto personal guardado'); ev.target.reset();
   });
-  $('#addPersonal')?.addEventListener('click', ()=>{
-    if($('#perDate')) $('#perDate').value = todayStr();
-    $('#perAmount')?.focus(); $('#personalForm')?.scrollIntoView({behavior:'smooth'});
-  });
+  $('#addPersonal')?.addEventListener('click', ()=>{ if($('#perDate')) $('#perDate').value = todayStr(); $('#perAmount')?.focus(); });
 }
 
-/* ====== Reportes/KPIs ====== */
+/* ===================== Reportes/KPIs (Home y Reports) ===================== */
 function isRecurrent(e){
   const d = (e.desc||'').toLowerCase();
   return e?.method === 'Automático' || d.startsWith('recurrente');
@@ -557,7 +545,6 @@ function renderHome(){
   $('#kpiExpensesMonth') && ($('#kpiExpensesMonth').textContent = fmt(totalExpenses));
   $('#kpiBalanceMonth') && ($('#kpiBalanceMonth').textContent  = fmt(balance));
 
-  // Mini gráfico (canvas) — sin cambiar estilos
   const c = $('#chart12'); if(!c) return; const ctx = c.getContext('2d');
   c.width = c.clientWidth; c.height = 180; ctx.clearRect(0,0,c.width,c.height);
 
@@ -588,7 +575,7 @@ function renderHome(){
   });
 }
 
-/* ====== Export/Import ====== */
+/* ===================== Export/Import ===================== */
 function exportJSON(){
   const data = JSON.stringify(state, null, 2);
   const blob = new Blob([data], {type:'application/json'});
@@ -615,104 +602,95 @@ function importJSON(file){
   reader.readAsText(file);
 }
 
-/* ====== PDF REAL (jsPDF B/N) ====== */
+/* ===================== PDF REAL (jsPDF Blanco y Negro) ===================== */
 let jsPDFReady = false;
-async function ensureJsPDF(){
-  if(jsPDFReady) return;
-  await new Promise((res,rej)=>{
-    const s = document.createElement('script');
+async function ensureJsPDF() {
+  if (jsPDFReady) return;
+  await new Promise((resolve, reject) => {
+    const s = document.createElement("script");
     s.src = "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js";
-    s.onload = ()=> res(); s.onerror = rej; document.head.appendChild(s);
+    s.onload = () => resolve();
+    s.onerror = reject;
+    document.head.appendChild(s);
   });
   jsPDFReady = true;
 }
-function bw(v){ return 0; } // siempre negro para texto/lineas
-function pdfHeader(doc, title){
-  doc.setFont("helvetica","bold"); doc.setFontSize(14);
-  doc.text(title, 14, 16);
-  doc.setFont("helvetica","normal"); doc.setFontSize(10);
-  const name = state.settings.businessName || 'Mi Negocio';
-  doc.text(`${name} — ${new Date().toLocaleString()}`, 14, 22);
-  doc.line(14, 24, 200, 24);
-}
-function pdfTable(doc, startY, headers, rows){
-  // Simple tabla B/N
-  doc.setFont("helvetica","bold"); doc.setFontSize(10);
-  let x=14, y=startY, colW = (190 / headers.length);
-  headers.forEach((h,i)=>{ doc.text(String(h), x + i*colW, y); });
-  y += 4; doc.line(14, y, 200, y); y += 4;
-
-  doc.setFont("helvetica","normal");
-  rows.forEach(r=>{
-    r.forEach((cell,i)=>{ 
-      const txt = (cell==null? '': String(cell));
-      doc.text(txt.substring(0,40), x + i*colW, y); 
-    });
-    y += 6;
-    if(y>280){ doc.addPage(); y=16; }
-  });
-  return y;
-}
-async function generatePDF(view){
+async function generatePDF(view = "expenses") {
   await ensureJsPDF();
   const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit:'mm', format:'a4' });
-  doc.setTextColor(bw()); doc.setDrawColor(bw());
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
 
-  if(view==='expenses'){
-    pdfHeader(doc, 'Gastos diarios');
-    const rows = state.expensesDaily.map(e=>[e.date,e.category,e.desc, e.method, Number(e.amount||0).toFixed(2), e.note||'']);
-    pdfTable(doc, 30, ['Fecha','Categoría','Descripción','Método','Monto','Nota'], rows);
-  } else if(view==='incomes'){
-    pdfHeader(doc, 'Ingresos diarios');
-    const rows = state.incomesDaily.map(r=>[r.date,r.client,r.method, Number(r.amount||0).toFixed(2)]);
-    pdfTable(doc, 30, ['Fecha','Cliente','Método','Monto'], rows);
-  } else if(view==='payments'){
-    pdfHeader(doc, 'Pagos');
-    const rows = state.payments.map(p=>[p.date,p.to,p.category, Number(p.amount||0).toFixed(2), p.status]);
-    pdfTable(doc, 30, ['Fecha','A','Categoría','Monto','Estado'], rows);
-  } else if(view==='ordinary'){
-    pdfHeader(doc, 'Gastos ordinarios (recurrentes)');
-    const rows = state.ordinary.map(o=>[o.name, Number(o.amount||0).toFixed(2), o.freq, o.next]);
-    pdfTable(doc, 30, ['Nombre','Monto','Frecuencia','Próxima'], rows);
-  } else if(view==='personal'){
-    pdfHeader(doc, 'Gastos personales');
-    const rows = state.personal.map(p=>[p.date,p.category,p.desc, Number(p.amount||0).toFixed(2)]);
-    pdfTable(doc, 30, ['Fecha','Categoría','Descripción','Monto'], rows);
-  } else if(view==='reports'){
-    pdfHeader(doc, 'Resumen (Ingresos vs Gastos)');
+  // Encabezado
+  const business = state.settings.businessName || "Mi Negocio";
+  doc.setFont("helvetica", "bold"); doc.setTextColor(0); doc.setDrawColor(0);
+  doc.setFontSize(14); doc.text(`${business} — ${view.toUpperCase()}`, 14, 16);
+  doc.setFont("helvetica", "normal"); doc.setFontSize(10);
+  doc.text(`Generado: ${new Date().toLocaleString()}`, 14, 22);
+  doc.line(14, 24, 200, 24);
+
+  // Datos por vista
+  let headers = [], rows = [];
+  if (view === "expenses") {
+    headers = ["Fecha","Categoría","Descripción","Método","Monto"];
+    rows = state.expensesDaily.map(e => [e.date, e.category, e.desc, e.method, Number(e.amount||0).toFixed(2)]);
+  } else if (view === "incomes") {
+    headers = ["Fecha","Cliente","Método","Monto"];
+    rows = state.incomesDaily.map(i => [i.date, i.client, i.method, Number(i.amount||0).toFixed(2)]);
+  } else if (view === "payments") {
+    headers = ["Fecha","A","Categoría","Monto","Estado"];
+    rows = state.payments.map(p => [p.date, p.to, p.category, Number(p.amount||0).toFixed(2), p.status]);
+  } else if (view === "ordinary") {
+    headers = ["Nombre","Monto","Frecuencia","Próxima"];
+    rows = state.ordinary.map(o => [o.name, Number(o.amount||0).toFixed(2), o.freq, o.next]);
+  } else if (view === "personal") {
+    headers = ["Fecha","Categoría","Descripción","Monto"];
+    rows = state.personal.map(p => [p.date, p.category, p.desc, Number(p.amount||0).toFixed(2)]);
+  } else if (view === "reports") {
+    headers = ["Periodo","Ingresos","Gastos"];
     const now=new Date();
     const today=now.toISOString().slice(0,10);
     const monthStart=new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0,10);
-    const yearStart=new Date(now.getFullYear(), 0, 1).toISOString().slice(0,10);
-    const weekStart=startOfWeek(now).toISOString().slice(0,10);
-
-    const incToday=sumRange(state.incomesDaily, today, today);
-    const incWeek=sumRange(state.incomesDaily, weekStart, today);
-    const incMonth=sumRange(state.incomesDaily, monthStart, today);
-    const incYear=sumRange(state.incomesDaily, yearStart, today);
-
-    const expToday = sumExpensesDailySplit(today, today).total + sumPersonalRange(today, today) + sumPaymentsRange(today, today);
-    const expWeek  = sumExpensesDailySplit(weekStart, today).total + sumPersonalRange(weekStart, today) + sumPaymentsRange(weekStart, today);
-    const expMonth = sumExpensesDailySplit(monthStart, today).total + sumPersonalRange(monthStart, today) + sumPaymentsRange(monthStart, today);
-    const expYear  = sumExpensesDailySplit(yearStart, today).total + sumPersonalRange(yearStart, today) + sumPaymentsRange(yearStart, today);
-
-    const rows = [
-      ['Hoy',        incToday.toFixed(2),  expToday.toFixed(2)],
-      ['Semana',     incWeek.toFixed(2),   expWeek.toFixed(2)],
-      ['Mes',        incMonth.toFixed(2),  expMonth.toFixed(2)],
-      ['Año',        incYear.toFixed(2),   expYear.toFixed(2)],
+    const weekStart=new Date(now - 7*86400000).toISOString().slice(0,10);
+    const incWeek = sumRange(state.incomesDaily, weekStart, today);
+    const expWeek = sumRange(state.expensesDaily, weekStart, today)
+      + sumRange(state.personal, weekStart, today)
+      + sumRange(state.payments, weekStart, today);
+    const incMonth = sumRange(state.incomesDaily, monthStart, today);
+    const expMonth = sumRange(state.expensesDaily, monthStart, today)
+      + sumRange(state.personal, monthStart, today)
+      + sumRange(state.payments, monthStart, today);
+    rows = [
+      ["Semana", incWeek.toFixed(2),  expWeek.toFixed(2)],
+      ["Mes",    incMonth.toFixed(2), expMonth.toFixed(2)]
     ];
-    pdfTable(doc, 30, ['Periodo','Ingresos','Gastos'], rows);
-  } else {
-    pdfHeader(doc, 'Vista actual');
   }
 
-  const name = state.settings.businessName?.replace(/\s+/g,'_') || 'Mi_Negocio';
-  doc.save(`${name}_${view||'vista'}.pdf`);
+  // Tabla
+  let y = 32;
+  const colW = 180 / headers.length;
+  doc.setFont("helvetica","bold"); doc.setFontSize(10);
+  headers.forEach((h,i)=> doc.text(String(h), 14 + i*colW, y));
+  y += 6; doc.line(14,y,200,y); y += 6;
+  doc.setFont("helvetica","normal");
+  rows.forEach(r=>{
+    r.forEach((cell,i)=> doc.text(String(cell??'').substring(0,32), 14 + i*colW, y));
+    y += 6;
+    if(y > 280){ doc.addPage(); y = 20; }
+  });
+
+  const fileName = `${business.replace(/\s+/g,'_')}_${view}.pdf`;
+  doc.save(fileName);
+  toast(`PDF generado: ${fileName}`);
+}
+function wireExports(){
+  $$('[data-print-view]').forEach(b=> b.addEventListener('click', ()=> generatePDF(b.dataset.printView)));
+  $('#printBtn')?.addEventListener('click', ()=>{
+    const current = document.querySelector('.view.visible')?.id || 'home';
+    generatePDF(current);
+  });
 }
 
-/* ====== Settings / Export UI ====== */
+/* ===================== Settings / Datos / PIN ===================== */
 function wireSettings(){
   $('#saveSettings')?.addEventListener('click', ()=>{
     state.settings.businessName = $('#setName')?.value || 'Mi Negocio';
@@ -724,8 +702,8 @@ function wireSettings(){
   });
   $('#setLogo')?.addEventListener('change', async (ev)=>{
     const f = ev.target.files[0]; if(!f) return;
-    state.settings.logoBase64 = await new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=rej; fr.readAsDataURL(f); });
-    save(); toast('Logo actualizado');
+    const base64 = await new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=rej; fr.readAsDataURL(f); });
+    state.settings.logoBase64 = base64; save(); toast('Logo actualizado');
   });
   $('#delLogo')?.addEventListener('click', ()=>{ state.settings.logoBase64=''; save(); toast('Logo eliminado'); });
 
@@ -735,30 +713,15 @@ function wireSettings(){
   $('#changePIN')?.addEventListener('click', async ()=>{
     const old = $('#pinOld')?.value; const n1 = $('#pinNew')?.value; const n2 = $('#pinNew2')?.value;
     if(!state.settings.pinHash) return toast('Primero crea un PIN en Login');
-    if(await sha256(old) !== state.settings.pinHash) return toast('PIN actual incorrecto');
-    if(n1!==n2 || n1.length<4 || n1.length>8) return toast('Nuevo PIN inválido');
+    const hashOld = await sha256(old||'');
+    if(hashOld !== state.settings.pinHash) return toast('PIN actual incorrecto');
+    if(n1!==n2 || (n1||'').length<4 || (n1||'').length>8) return toast('Nuevo PIN inválido');
     state.settings.pinHash = await sha256(n1); save(); toast('PIN actualizado');
     ['pinOld','pinNew','pinNew2'].forEach(id=>{ const el=$('#'+id); if(el) el.value=''; });
   });
-
-  $('#resetAll')?.addEventListener('click', ()=>{
-    if(confirm('⚠️ ¿Seguro que quieres restablecer TODO?')){
-      if(confirm('Esto borrará todos los datos. ¿Continuar?')){
-        localStorage.removeItem(STORAGE_KEY); localStorage.removeItem(LOCK_KEY);
-        state = load(); save(); toast('Sistema restablecido'); showView('login'); updateLoginUI();
-      }
-    }
-  });
-}
-function wireExports(){
-  $$('[data-print-view]').forEach(b=> b.addEventListener('click', ()=> generatePDF(b.dataset.printView)));
-  $('#printBtn')?.addEventListener('click', ()=>{
-    const current = document.querySelector('.view.visible')?.id || 'home';
-    generatePDF(current);
-  });
 }
 
-/* ====== Firebase Cloud ====== */
+/* ===================== Firebase Cloud ===================== */
 const cloud = { user:null, autosync: JSON.parse(localStorage.getItem('autosync')||'false'), unsub:null };
 function uiCloud(){
   $('#cloudStatus') && ($('#cloudStatus').textContent = cloud.user ? `Conectado como ${cloud.user.displayName||cloud.user.email||cloud.user.uid}` : 'No conectado');
@@ -813,12 +776,12 @@ function wireCloudUI(){
   getRedirectResult(auth).catch(()=>{});
   onAuthStateChanged(auth, (user)=>{ 
     cloud.user=user||null; uiCloud(); 
-    if(user){ cloudSubscribe(); }
+    if(user){ cloudSubscribe(); } 
     else { cloud.unsub?.(); cloud.unsub=null; }
   });
 }
 
-/* ====== Refresh / Init ====== */
+/* ===================== Refresh / Init ===================== */
 function refreshAll(){
   safely(renderExpenses);
   safely(renderIncomes);
@@ -829,14 +792,32 @@ function refreshAll(){
   safely(renderReports);
   safely(renderHome);
 }
-function wireNavAndInit(){
-  wireNav(); wireExports(); wireSettings();
+function wireAll(){
+  // navegación + pdf + settings
+  (function wireNav(){
+    const sidebar = $('#sidebar');
+    sidebar?.addEventListener('click', (ev)=>{
+      const btn = ev.target.closest?.('.nav-btn');
+      if(btn && btn.dataset.target){ showView(btn.dataset.target); sidebar.classList.remove('open'); }
+    });
+    $('#menuToggle')?.addEventListener('click', ()=> sidebar?.classList.toggle('open'));
+  })();
+  wireExports(); wireSettings();
+
+  // CRUD
   wireExpenses(); wireIncomes(); wirePayments(); wireOrdinary(); wireBudgets(); wirePersonal();
-  wireCloudUI(); updateLoginUI(); autoGenerateOrdinary(); initCatalogs();
+
+  // Cloud + Login
+  wireCloudUI(); updateLoginUI();
+
+  // Catálogos + recurrentes
+  initCatalogs(); autoGenerateOrdinary();
+
+  // Tema y primera carga
   applyTheme(); refreshAll(); showView('login');
 }
 
-/* ====== Exponer API consola ====== */
+/* ===================== API consola ===================== */
 self.app = {
   cloudPush, cloudPull, cloud,
   setAutosync: (v)=> setAutosync(!!v),
@@ -845,5 +826,5 @@ self.app = {
   generatePDF
 };
 
-/* ====== Arranque ====== */
-document.addEventListener('DOMContentLoaded', wireNavAndInit);
+/* ===================== Arranque ===================== */
+document.addEventListener('DOMContentLoaded', wireAll);
