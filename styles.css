@@ -1,0 +1,218 @@
+/* ====== Paleta elegante (negro + dorado) ======
+   Negro carbón:        #0B0D10
+   Superficie oscura:   #101318
+   Tarjeta:             #12161C
+   Borde sutil:         #1B2028
+   Texto principal:     #F2F3F5
+   Texto secundario:    #A6AAB2
+   Dorado (accent):     #C7A24B
+   Dorado suave:        #B8943F
+   Resaltado foco:      #2A313C
+   ================================================= */
+
+:root{
+  --primary:#0B0D10;        /* fondo general */
+  --surface:#101318;        /* barra superior, paneles */
+  --card:#12161C;           /* tarjetas */
+  --border:#1B2028;         /* contornos sutiles */
+  --text:#F2F3F5;           /* texto principal */
+  --muted:#A6AAB2;          /* texto secundario */
+  --accent:#C7A24B;         /* dorado corporativo */
+  --accent-2:#B8943F;       /* dorado más sobrio para hover */
+  --focus:#2A313C;          /* foco/hover oscuro elegante */
+  --radius:10px;
+  --shadow: 0 6px 20px rgba(0,0,0,.25);
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial;
+  background:var(--primary);
+  color:var(--text);
+  display:flex;
+}
+
+/* ====== Sidebar ====== */
+.sidebar{
+  width:280px;
+  background:var(--surface);
+  border-right:1px solid var(--border);
+  position:sticky; top:0; height:100vh;
+  padding:16px; overflow:auto;
+}
+.brand{display:flex; align-items:center; gap:10px; margin-bottom:16px}
+.brand img{
+  width:44px; height:44px; border-radius:8px;
+  border:1px solid var(--border); object-fit:cover; background:#0D1117;
+  box-shadow: 0 2px 10px rgba(0,0,0,.25);
+}
+.brand-info small{color:var(--muted)}
+.menu{display:flex; flex-direction:column; gap:8px}
+.nav-btn{
+  background:#0F1319;
+  color:var(--text);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:12px 14px;
+  text-align:left;
+  cursor:pointer;
+  transition:.15s transform, .15s background, .15s border-color, .15s box-shadow;
+}
+.nav-btn:hover{
+  background:var(--focus);
+  border-color:#232A36;
+  transform:translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0,0,0,.25);
+}
+.nav-btn.active{
+  outline:2px solid var(--accent);
+  background:linear-gradient(180deg, #0F1319 0%, #0C0F14 100%);
+}
+
+/* ====== Topbar / Main ====== */
+.main{flex:1; min-width:0}
+.topbar{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:12px 16px;
+  border-bottom:1px solid var(--border);
+  background:var(--surface);
+  position:sticky; top:0; z-index:2;
+  box-shadow: 0 2px 12px rgba(0,0,0,.25);
+}
+.menu-toggle{display:none}
+.cloud{display:flex; gap:8px; align-items:center}
+.cloud .btn{padding:8px 10px}
+
+/* ====== Views ====== */
+.view{display:none; padding:16px}
+.view.visible{display:block}
+
+/* ====== Layouts ====== */
+.grid{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px}
+.grid2{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px}
+.row{display:flex; align-items:center; gap:8px}
+.row.end{justify-content:flex-end}
+.row.g{gap:12px}
+.grow{flex:1}
+
+/* ====== Cards / KPIs ====== */
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:14px;
+  box-shadow: var(--shadow);
+}
+.card-title{
+  color:var(--accent);
+  margin-bottom:10px;
+  font-weight:600;
+  letter-spacing:.2px;
+}
+.kpi{font-size:28px; font-weight:700; text-shadow:0 1px 0 rgba(0,0,0,.35)}
+.logo-preview{
+  height:44px; width:44px; border-radius:8px; border:1px solid var(--border);
+  object-fit:cover; background:#0D1117; box-shadow:0 2px 10px rgba(0,0,0,.25);
+}
+
+/* ====== Tablas ====== */
+.table{width:100%; border-collapse:collapse; font-size:14px}
+.table th,.table td{
+  border-bottom:1px solid var(--border);
+  padding:10px; text-align:left;
+}
+.table thead th{
+  color:#E7E8EA;
+  font-weight:700; letter-spacing:.2px;
+  background:#0F1319;
+}
+.table tr:hover td{
+  background:#0E1217;
+}
+.table .row-actions{display:flex; gap:6px}
+
+/* ====== Barras / Pills ====== */
+.bars .bar{
+  height:8px; background:#0E1217; border:1px solid var(--border);
+  border-radius:8px; overflow:hidden; margin:6px 0
+}
+.bars .bar span{display:block; height:100%; background:var(--accent)}
+.pills{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px}
+.pill{
+  background:#0F1319;
+  border:1px solid var(--border);
+  border-radius:20px; padding:6px 10px; color:#E0E3E7
+}
+
+/* ====== Formularios ====== */
+.form label{display:flex; flex-direction:column; gap:6px; font-size:14px}
+input, select{
+  background:#0D1117;
+  color:var(--text);
+  border:1px solid var(--border);
+  padding:10px; border-radius:8px; outline:none;
+  transition: .15s border-color, .15s background;
+}
+input::placeholder{color:#7E8591}
+input:focus, select:focus{
+  border-color:#2B3340;
+  background:#0E131A;
+  box-shadow:0 0 0 3px rgba(199,162,75,.15);
+}
+
+/* ====== Botones ====== */
+.btn{
+  background:var(--accent);
+  border:1px solid var(--accent);
+  color:#111;
+  padding:10px 12px; border-radius:10px; cursor:pointer; font-weight:700;
+  letter-spacing:.2px;
+  transition:.15s transform, .15s filter, .15s box-shadow, .15s background-color, .15s border-color;
+}
+.btn:hover{
+  filter:brightness(1.03);
+  transform:translateY(-1px);
+  box-shadow:0 6px 16px rgba(199,162,75,.25);
+}
+.btn:active{transform:translateY(0)}
+
+.btn-outline{
+  background:transparent;
+  border:1px solid var(--border);
+  color:#E5E7EB; padding:10px 12px; border-radius:10px; cursor:pointer;
+}
+.btn-outline:hover{
+  border-color:#2B3340;
+  background:#0E1217;
+}
+
+/* ====== Toasts ====== */
+#toastContainer{position:fixed; right:16px; bottom:16px; display:flex; flex-direction:column; gap:8px; z-index:10}
+.toast{
+  background:#0D1117;
+  border:1px solid var(--border);
+  border-left:4px solid var(--accent);
+  padding:10px 12px; border-radius:10px; transition:.25s opacity;
+  box-shadow:0 8px 20px rgba(0,0,0,.35);
+}
+
+/* ====== Responsive ====== */
+@media (max-width:1000px){
+  .grid{grid-template-columns:1fr}
+  .grid2{grid-template-columns:1fr}
+  .menu-toggle{display:inline-block}
+  .sidebar{position:fixed; left:-300px; transition:.2s left; z-index:5}
+  .sidebar.open{left:0}
+  body{overflow-x:hidden}
+}
+
+/* ====== Impresión (B/N limpio) ====== */
+@media print{
+  .sidebar,.topbar,#toastContainer{display:none!important}
+  .view{display:block!important}
+  body{background:#fff; color:#000}
+  .card{border:none; box-shadow:none}
+  .table thead th{background:#fff; color:#000}
+}
