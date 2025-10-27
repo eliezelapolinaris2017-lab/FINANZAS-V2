@@ -1,0 +1,96 @@
+:root{
+  --primary:#0b0b0e;
+  --accent:#C7A24B;
+  --text:#ffffff;
+  --muted:#9aa0a6;
+  --card:#131318;
+  --border:#0f0f12;
+  --radius:10px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial;
+  background:var(--primary); color:var(--text);
+  display:flex;
+}
+/* Sidebar */
+.sidebar{
+  width:280px; background:#0d0d11; border-right:1px solid var(--border);
+  position:sticky; top:0; height:100vh; padding:16px; overflow:auto;
+}
+.brand{display:flex; align-items:center; gap:10px; margin-bottom:16px}
+.brand img{width:44px; height:44px; border-radius:8px; border:1px solid var(--border); object-fit:cover; background:#111}
+.brand-info small{color:var(--muted)}
+.menu{display:flex; flex-direction:column; gap:8px}
+.nav-btn{
+  background:#121218; color:var(--text); border:1px solid var(--border); border-radius:10px;
+  padding:12px 14px; text-align:left; cursor:pointer; transition:.15s transform, .15s background;
+}
+.nav-btn:hover{background:#171722; transform:translateY(-1px)}
+.nav-btn.active{outline:2px solid var(--accent)}
+/* Main */
+.main{flex:1; min-width:0}
+.topbar{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:12px 16px; border-bottom:1px solid var(--border); background:#0d0d11; position:sticky; top:0; z-index:2;
+}
+.menu-toggle{display:none}
+.cloud{display:flex; gap:8px; align-items:center}
+.cloud .btn{padding:8px 10px}
+.view{display:none; padding:16px}
+.view.visible{display:block}
+.grid{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:16px}
+.grid2{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px}
+.card{
+  background:var(--card); border:1px solid var(--border); border-radius:var(--radius);
+  padding:14px;
+}
+.card-title{color:var(--accent); margin-bottom:10px; font-weight:600}
+.kpi{font-size:28px; font-weight:700}
+.logo-preview{height:44px; width:44px; border-radius:8px; border:1px solid var(--border); object-fit:cover; background:#111}
+.table{width:100%; border-collapse:collapse; font-size:14px}
+.table th,.table td{border-bottom:1px solid var(--border); padding:10px; text-align:left}
+.table tfoot td{font-weight:700}
+.table .row-actions{display:flex; gap:6px}
+.bars .bar{height:8px; background:#1a1a22; border:1px solid var(--border); border-radius:8px; overflow:hidden; margin:6px 0}
+.bars .bar span{display:block; height:100%; background:var(--accent)}
+.pills{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px}
+.pill{background:#15151c; border:1px solid var(--border); border-radius:20px; padding:6px 10px; color:#ddd}
+/* Form */
+.form label{display:flex; flex-direction:column; gap:6px; font-size:14px}
+input, select{
+  background:#0f0f14; color:var(--text); border:1px solid var(--border);
+  padding:10px; border-radius:8px; outline:none;
+}
+input:focus, select:focus{border-color:#2a2a33}
+.row{display:flex; align-items:center; gap:10px}
+.row.g{gap:12px}
+.row.end{justify-content:flex-end}
+.btn{
+  background:var(--accent); border:1px solid var(--accent); color:#101010;
+  padding:10px 12px; border-radius:10px; cursor:pointer; font-weight:600;
+}
+.btn-outline{
+  background:transparent; border:1px solid var(--border); color:#e5e5e5; padding:10px 12px; border-radius:10px; cursor:pointer;
+}
+.btn:hover{filter:brightness(1.05)}
+.btn-outline:hover{border-color:#2a2a33}
+/* Toast */
+#toastContainer{position:fixed; right:16px; bottom:16px; display:flex; flex-direction:column; gap:8px; z-index:10}
+.toast{background:#111; border:1px solid var(--border); border-left:4px solid var(--accent); padding:10px 12px; border-radius:10px; transition:.25s opacity}
+/* Responsive */
+@media (max-width:1000px){
+  .grid{grid-template-columns:1fr}
+  .grid2{grid-template-columns:1fr}
+  .menu-toggle{display:inline-block}
+  .sidebar{position:fixed; left:-300px; transition:.2s left; z-index:5}
+  .sidebar.open{left:0}
+  body{overflow-x:hidden}
+}
+@media print{
+  .sidebar,.topbar,#toastContainer{display:none!important}
+  .view{display:block!important}
+  body{background:#fff; color:#000}
+  .card{border:none}
+}
