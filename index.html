@@ -55,8 +55,16 @@
       </div>
     </section>
 
-    <!-- GASTOS DIARIOS (form ARRIBA) -->
+    <!-- GASTOS DIARIOS -->
     <section id="expenses" class="view" data-title="Gastos Diarios">
+      <!-- RESUMEN ARRIBA -->
+      <div class="grid kpis">
+        <div class="card"><div class="card-title">Total Gastos (filtro)</div><div id="expSumTotal" class="kpi">—</div></div>
+        <div class="card"><div class="card-title">Totales por categoría</div><div id="expSumPills" class="pills"></div></div>
+        <div class="card"><div class="card-title">Acción</div><div class="row"><button class="btn btn-outline" data-print-view="expenses">PDF Gastos</button></div></div>
+      </div>
+
+      <!-- FORM ARRIBA -->
       <div class="card">
         <div class="card-title">Nuevo gasto</div>
         <form id="expenseForm" class="form">
@@ -79,6 +87,7 @@
         </form>
       </div>
 
+      <!-- FILTROS + TABLA -->
       <div class="card">
         <div class="row g">
           <label>Desde: <input type="date" id="fExpFrom"></label>
@@ -91,10 +100,8 @@
               <tr><th>Fecha</th><th>Categoría</th><th>Descripción</th><th>Método</th><th>Monto</th><th>Nota</th><th></th></tr>
             </thead>
             <tbody></tbody>
-            <tfoot><tr><td colspan="4">Total</td><td id="expensesTotal">—</td><td colspan="2"></td></tr></tfoot>
           </table>
         </div>
-        <div id="expCategoryTotals" class="pills"></div>
       </div>
     </section>
 
@@ -112,21 +119,28 @@
     <!-- EXPORTACIONES -->
     <section id="exports" class="view" data-title="Exportaciones en PDF">
       <div class="card">
-        <div class="card-title">Generar PDF (blanco y negro, plano)</div>
+        <div class="card-title">Generar PDF (blanco y negro)</div>
         <div class="row g">
-          <button class="btn" id="pdf-current">Exportar vista actual</button>
-          <button class="btn btn-outline" data-pdf-view="expenses">PDF: Gastos</button>
-          <button class="btn btn-outline" data-pdf-view="incomes">PDF: Ingresos</button>
-          <button class="btn btn-outline" data-pdf-view="payments">PDF: Pagos</button>
-          <button class="btn btn-outline" data-pdf-view="ordinary">PDF: Ordinarios</button>
-          <button class="btn btn-outline" data-pdf-view="personal">PDF: Personales</button>
-          <button class="btn btn-outline" data-pdf-view="reports">PDF: Reportes</button>
+          <button class="btn" id="printBtn">PDF de vista actual</button>
+          <button class="btn btn-outline" data-print-view="expenses">Gastos</button>
+          <button class="btn btn-outline" data-print-view="incomes">Ingresos</button>
+          <button class="btn btn-outline" data-print-view="payments">Pagos</button>
+          <button class="btn btn-outline" data-print-view="ordinary">Ordinarios</button>
+          <button class="btn btn-outline" data-print-view="personal">Personales</button>
+          <button class="btn btn-outline" data-print-view="reports">Reportes</button>
         </div>
       </div>
     </section>
 
-    <!-- ENTRADA DE DINERO (form ARRIBA) -->
+    <!-- ENTRADA DE DINERO -->
     <section id="incomes" class="view" data-title="Entrada de Dinero Diario">
+      <!-- RESUMEN ARRIBA -->
+      <div class="grid kpis">
+        <div class="card"><div class="card-title">Total Ingresos (filtro)</div><div id="incSumTotal" class="kpi">—</div></div>
+        <div class="card"><div class="card-title">Acción</div><div class="row"><button class="btn btn-outline" data-print-view="incomes">PDF Ingresos</button></div></div>
+      </div>
+
+      <!-- FORM ARRIBA -->
       <div class="card">
         <div class="card-title">Nuevo ingreso</div>
         <form id="incomeForm" class="form">
@@ -143,6 +157,7 @@
         </form>
       </div>
 
+      <!-- FILTROS + TABLA -->
       <div class="card">
         <div class="row g">
           <label>Desde: <input type="date" id="fIncFrom"></label>
@@ -153,14 +168,21 @@
           <table id="incomesTable" class="table">
             <thead><tr><th>Fecha</th><th>Cliente</th><th>Método</th><th>Monto</th><th></th></tr></thead>
             <tbody></tbody>
-            <tfoot><tr><td colspan="3">Total</td><td id="incomesTotal">—</td><td></td></tr></tfoot>
           </table>
         </div>
       </div>
     </section>
 
-    <!-- PAGOS (form ARRIBA) -->
+    <!-- PAGOS -->
     <section id="payments" class="view" data-title="Pagos">
+      <!-- RESUMEN ARRIBA -->
+      <div class="grid kpis">
+        <div class="card"><div class="card-title">Pendiente</div><div id="paySumPend" class="kpi">—</div></div>
+        <div class="card"><div class="card-title">Pagado</div><div id="paySumPaid" class="kpi">—</div></div>
+        <div class="card"><div class="card-title">Total</div><div id="paySumAll" class="kpi">—</div></div>
+      </div>
+
+      <!-- FORM ARRIBA -->
       <div class="card">
         <div class="card-title">Nuevo pago</div>
         <form id="paymentForm" class="form">
@@ -183,6 +205,7 @@
         </form>
       </div>
 
+      <!-- TABLA -->
       <div class="card">
         <div class="table-wrap">
           <table id="paymentsTable" class="table">
@@ -190,12 +213,18 @@
             <tbody></tbody>
           </table>
         </div>
-        <div id="payTotals" class="pills"></div>
       </div>
     </section>
 
-    <!-- GASTOS ORDINARIOS (form ARRIBA) -->
+    <!-- GASTOS ORDINARIOS -->
     <section id="ordinary" class="view" data-title="Gastos Ordinarios">
+      <!-- RESUMEN ARRIBA -->
+      <div class="grid kpis">
+        <div class="card"><div class="card-title">Cantidad de recurrentes</div><div id="ordSumCount" class="kpi">—</div></div>
+        <div class="card"><div class="card-title">Próxima ejecución</div><div id="ordSumNext" class="kpi">—</div></div>
+      </div>
+
+      <!-- FORM ARRIBA -->
       <div class="card">
         <div class="card-title">Nuevo gasto recurrente</div>
         <form id="ordinaryForm" class="form">
@@ -218,6 +247,7 @@
         </form>
       </div>
 
+      <!-- TABLA -->
       <div class="card">
         <div class="table-wrap">
           <table id="ordinaryTable" class="table">
@@ -249,8 +279,15 @@
       </div>
     </section>
 
-    <!-- GASTOS PERSONALES (form ARRIBA) -->
+    <!-- GASTOS PERSONALES -->
     <section id="personal" class="view" data-title="Gastos Personales">
+      <!-- RESUMEN ARRIBA -->
+      <div class="grid kpis">
+        <div class="card"><div class="card-title">Total Personales</div><div id="perSumTotal" class="kpi">—</div></div>
+        <div class="card"><div class="card-title">Acción</div><div class="row"><button class="btn btn-outline" data-print-view="personal">PDF Personales</button></div></div>
+      </div>
+
+      <!-- FORM ARRIBA -->
       <div class="card">
         <div class="card-title">Nuevo gasto personal</div>
         <form id="personalForm" class="form">
@@ -267,12 +304,12 @@
         </form>
       </div>
 
+      <!-- TABLA -->
       <div class="card">
         <div class="table-wrap">
           <table id="personalTable" class="table">
             <thead><tr><th>Fecha</th><th>Categoría</th><th>Descripción</th><th>Monto</th><th></th></tr></thead>
             <tbody></tbody>
-            <tfoot><tr><td colspan="3">Total</td><td id="personalTotal">—</td><td></td></tr></tfoot>
           </table>
         </div>
       </div>
@@ -337,11 +374,6 @@
 
   <div id="toastContainer"></div>
 
-  <!-- jsPDF + AutoTable (PDF reales) -->
-  <script defer src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.1/dist/jspdf.plugin.autotable.min.js"></script>
-
-  <!-- App -->
-  <script type="module" src="app.js?v=10"></script>
+  <script type="module" src="app.js?v=12"></script>
 </body>
 </html>
