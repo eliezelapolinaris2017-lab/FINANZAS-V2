@@ -279,3 +279,432 @@ function wireIncomes(){
   $('#fIncApply')?.addEventListener('click', renderIncomes);
   $('#addIncome')?.addEventListener('click', ()=>{ if($('#incDate')) $('#incDate').value=todayStr(); $('#incAmount')?.focus(); });
 }
+/* =========================================================
+   Nexus Finance — app.js (Parte 2 de 3)
+   Sección: Nómina con retenciones, Facturas, Cotizaciones,
+            Ordinarios, Presupuestos, Personales
+   ========================================================= */
+
+/* ======= Helpers de Nómina / Retenciones ======= */
+function payrollComputeNet() {
+  const g  = parseFloat($('#payGross')?.value || '0') || 0;
+  const isr= parseFloat($('#payRetISR')?.value || '0') || 0;
+  const ss = parseFloat($('#payRetSS')?.value || '0') || 0;
+  const ot = parseFloat($('#payRetOther')?.value || '0') || 0;
+  const net = g - (isr + ss + ot);
+  if ($('#payNet'))    $('#payNet').value    = (net >= 0 ? net : 0).toFixed(2);
+  if ($('#payAmount')) $('#payAmount').value = (net >= 0 ? net : 0).toFixed(2); // compat con lógica previa
+  return net >= 0 ? net : 0;
+}
+function payrollBindRetentionInputs() {
+  ['payGross','payRetISR','payRetSS','payRetOther'].forEach(id => {
+    const el = $('#'+id);
+    if (el && !el._retBound) {
+      el.addEventListener('input', payrollComputeNet);
+      el._retBound = true;
+    }
+  });
+  payrollComputeNet();
+}
+
+/* ===================== Nómina (Pagos) ===================== */
+function renderPayments(){
+  const tbody=$('#paymentsTable tbody'); if(!tbody) return; tbody.innerHTML='';
+  const totals={Pendiente:0,Pagado:0};
+  state.payments.slice().sort(byDateDesc).forEach(p=>{
+    const breakdown = [
+      (p.gross!=null ? `Bruto: ${fmt(p.gross)}` : null),
+      (p.retISR!=null ? `ISR: ${fmt(p.retISR)}` : null),
+      (p.retSS!=null ? `SS: ${fmt(p.retSS)}` : null),
+      (p.retOther!=null ? `Otras: ${fmt(p.retOther)}` : null),
+      (p.amount!=null ? `Neto: ${fmt(p.amount)}` : null),
+    ].filter(Boolean).join(' · ');
+    const tr=document.createElement('tr');
+    tr.innerHTML = `
+      <td>${p.date||''}</td>
+      <td>${p.to||''}</td>
+      <td>${p.category||''}</td>
+      <td title="${breakdown}">${fmt(p.amount)}</td>
+      <td>${p.status}</td>
+      <td class="row-actions">
+        <button class="btn-outline" data-edit="${p.id}">Editar</button>
+        <button class="btn-outline" data-del="${p.id}">Eliminar</button>
+      </td>`;
+    tbody.appendChild(tr);
+    totals[p.status]=(totals[p.status]||0)+Number(p.amount||0);
+  });
+  $('#paySumPend') && ($('#paySumPend').textContent = fmt(totals['Pendiente']||0));
+  $('#paySumPaid') && ($('#paySumPaid').textContent = fmt(totals['Pagado']||0));
+  $('#paySumAll')  && ($('#paySumAll').textContent  = fmt((totals['Pagado']||0)+(totals['Pendiente']||0)));
+  $$('#paymentsTable [data-del]').forEach(b=> b.onclick=()=>{ state.payments = state.payments.filter(x=>x.id!==b.dataset.del); save(); toast('Pago eliminado'); });
+  $$('#paymentsTable [data-edit]').forEach(b=> b.onclick=()=> editPayment(b.dataset.edit));
+}
+function editPayment(id){
+  const i=state.payments.findIndex(x=>x.id===id); if(i<0) return;
+  const p=state.payments[i];
+  let r=ask(p.date,'Fecha (YYYY-MM-DD)'); if(r.cancelled) return; p.date=r.value||p.date;
+  r=ask(p.to,'Empleado/Beneficiario'); if(r.cancelled) return; p.to=r.value||p.to;
+  r=ask(p.category,'Categoría'); if(r.cancelled) return; p.category=r.value||p.category;
+  r=askNumber(p.gross ?? p.amount,'Monto bruto'); if(r.cancelled) return; p.gross=r.value;
+  r=askNumber(p.retISR ?? 0,'ISR'); if(r.cancelled) return; p.retISR=r.value;
+  r=askNumber(p.retSS ?? 0,'Seguro Social'); if(r.cancelled) return; p.retSS=r.value;
+  r=askNumber(p.retOther ?? 0,'Otras deducciones'); if(r.cancelled) return; p.retOther=r.value;
+  const net = (Number(p.gross||0) - Number(p.retISR||0) - Number(p.retSS||0) - Number(p.retOther||0));
+  p.amount = (net>=0?net:0);
+  r=ask(p.status,'Estado (Pendiente/Pagado)'); if(r.cancelled) return; p.status=r.value||p.status;
+  save(); toast('Pago actualizado');
+}
+function wirePayments(){
+  payrollBindRetentionInputs();
+  $('#paymentForm')?.addEventListener('submit',(ev)=>{
+    ev.preventDefault();
+    const net = payrollComputeNet();
+    const rec={
+      id:uid(),
+      date:     $('#payDate')?.value,
+      to:       $('#payTo')?.value,
+      category: $('#payCategory')?.value,
+      gross:    parseFloat($('#payGross')?.value||'0')||0,
+      retISR:   parseFloat($('#payRetISR')?.value||'0')||0,
+      retSS:    parseFloat($('#payRetSS')?.value||'0')||0,
+      retOther: parseFloat($('#payRetOther')?.value||'0')||0,
+      amount:   net, // NETO
+      status:   $('#payStatus')?.value || 'Pendiente'
+    };
+    if(!rec.date) return toast('Fecha requerida');
+    state.payments.push(rec); save(); toast('Pago guardado'); ev.target.reset(); payrollBindRetentionInputs();
+  });
+  $('#addPayment')?.addEventListener('click', ()=>{ if($('#payDate')) $('#payDate').value=todayStr(); payrollComputeNet(); });
+}
+
+/* ===================== Helpers Factura/Cotización ===================== */
+function uidItem(){ return Math.random().toString(36).slice(2,7); }
+function addItemRow(tbody){
+  const tr=document.createElement('tr');
+  tr.innerHTML = `
+    <td><input type="text" placeholder="Descripción"></td>
+    <td><input type="number" step="0.01" value="1"></td>
+    <td><input type="number" step="0.01" value="0"></td>
+    <td><input type="number" step="0.01" value="0"></td>
+    <td class="amount-cell">0.00</td>
+    <td><button type="button" class="btn-outline btnDelRow">✕</button></td>`;
+  tbody.appendChild(tr);
+  tr.querySelector('.btnDelRow').onclick=()=> tr.remove();
+}
+function readItemsFromTable(tbody){
+  const items=[];
+  tbody.querySelectorAll('tr').forEach(tr=>{
+    const [desc, qty, price, tax] = Array.from(tr.querySelectorAll('input')).map(i=>i.value);
+    const q=parseFloat(qty||'0')||0, p=parseFloat(price||'0')||0, t=parseFloat(tax||'0')||0;
+    items.push({ id:uidItem(), desc:(desc||'').trim(), qty:q, price:p, tax:t });
+  });
+  return items;
+}
+function calcTotals(items){
+  let subtotal=0,taxTotal=0;
+  items.forEach(it=>{
+    const base=(it.qty||0)*(it.price||0);
+    const tax=base*((it.tax||0)/100);
+    subtotal+=base; taxTotal+=tax;
+  });
+  return { subtotal, taxTotal, total: subtotal+taxTotal };
+}
+function paintRowAmounts(tbody){
+  tbody.querySelectorAll('tr').forEach(tr=>{
+    const [desc, qty, price, tax] = Array.from(tr.querySelectorAll('input')).map(i=>i.value);
+    const q=parseFloat(qty||'0')||0, p=parseFloat(price||'0')||0, t=parseFloat(tax||'0')||0;
+    const base=q*p, taxAmt=base*(t/100), amt=base+taxAmt;
+    tr.querySelector('.amount-cell').textContent = amt.toFixed(2);
+  });
+}
+
+/* ===================== Facturación (crear + KPI + historial) ===================== */
+function renderInvoicesKPI(){
+  const now=new Date();
+  const mStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
+  const today=now.toISOString().slice(0,10);
+  const sumMonth = state.invoices.filter(x=>inRange(x.date, mStart, today)).reduce((a,b)=>a+Number(b.total||0),0);
+  $('#invSumMonth') && ($('#invSumMonth').textContent = fmt(sumMonth));
+}
+function wireInvoicesCreate(){
+  $('#invAddItem')?.addEventListener('click', ()=> addItemRow($('#invItemsTable tbody')));
+  $('#invCalc')?.addEventListener('click', ()=>{
+    const tb=$('#invItemsTable tbody'); paintRowAmounts(tb);
+    const t = calcTotals(readItemsFromTable(tb));
+    $('#invSubtotal').textContent=fmt(t.subtotal);
+    $('#invTaxTotal').textContent=fmt(t.taxTotal);
+    $('#invGrandTotal').textContent=fmt(t.total);
+  });
+  $('#addInvoiceToday')?.addEventListener('click', ()=>{ if($('#invDate')) $('#invDate').value=todayStr(); });
+  $('#invoiceForm')?.addEventListener('submit',(ev)=>{
+    ev.preventDefault();
+    const items=readItemsFromTable($('#invItemsTable tbody'));
+    const t=calcTotals(items);
+    const inv={
+      id:uid(),
+      date:$('#invDate')?.value,
+      dueDate:$('#invDueDate')?.value,
+      number:$('#invNumber')?.value,
+      method:$('#invMethod')?.value,
+      client:{
+        name:$('#invClient')?.value,
+        email:$('#invClientEmail')?.value,
+        phone:$('#invClientPhone')?.value,
+        address:$('#invClientAddress')?.value
+      },
+      items,
+      subtotal:t.subtotal, taxTotal:t.taxTotal, total:t.total,
+      note:$('#invNote')?.value, terms:$('#invTerms')?.value
+    };
+    if(!inv.date || !inv.number) return toast('Fecha y número requeridos');
+
+    // Al crear factura -> registrar ingreso
+    const income={ id:uid(), date:inv.date, client:inv.client.name, method:inv.method, amount:inv.total, invoiceNumber:inv.number };
+    state.incomesDaily.push(income); inv.incomeId=income.id;
+
+    state.invoices.push(inv); save(); toast('Factura creada y registrada en Ingresos');
+    ev.target.reset();
+    $('#invItemsTable tbody').innerHTML='';
+    $('#invSubtotal').textContent='—'; $('#invTaxTotal').textContent='—'; $('#invGrandTotal').textContent='—';
+  });
+}
+function renderInvoicesHistory(q=''){
+  const tb=$('#invoicesTable tbody'); if(!tb) return; tb.innerHTML='';
+  const s=(q||'').toLowerCase().trim();
+  state.invoices.slice().sort(byDateDesc).forEach(inv=>{
+    const hay = `${inv.number||''} ${inv.client?.name||''}`.toLowerCase();
+    if(s && !hay.includes(s)) return;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td>${inv.date||''}</td>
+      <td>${inv.number||''}</td>
+      <td>${inv.client?.name||''}</td>
+      <td>${fmt(inv.total||0)}</td>
+      <td>${inv.method||''}</td>
+      <td class="row-actions">
+        <button class="btn-outline" data-pdf="${inv.id}">PDF</button>
+        <button class="btn-outline" data-edit="${inv.id}">Editar</button>
+        <button class="btn-outline" data-del="${inv.id}">Eliminar</button>
+      </td>`;
+    tb.appendChild(tr);
+  });
+  $$('#invoicesTable [data-del]').forEach(b=> b.onclick=()=> deleteInvoice(b.dataset.del));
+  $$('#invoicesTable [data-edit]').forEach(b=> b.onclick=()=> editInvoiceBasic(b.dataset.edit));
+  $$('#invoicesTable [data-pdf]').forEach(b=> b.onclick=()=> generatePDF('invoices', b.dataset.pdf));
+}
+function deleteInvoice(id){
+  const inv=state.invoices.find(x=>x.id===id); if(!inv) return toast('No encontrada');
+  if(inv.incomeId){ state.incomesDaily = state.incomesDaily.filter(r=>r.id!==inv.incomeId); }
+  state.invoices = state.invoices.filter(x=>x.id!==id);
+  save(); toast('Factura eliminada (y su ingreso)');
+}
+function editInvoiceBasic(id){
+  const i=state.invoices.findIndex(x=>x.id===id); if(i<0) return;
+  const inv=state.invoices[i];
+  let r=ask(inv.date,'Fecha'); if(r.cancelled) return; inv.date=r.value||inv.date;
+  r=ask(inv.dueDate,'Vence'); if(r.cancelled) return; inv.dueDate=r.value||inv.dueDate;
+  r=ask(inv.number,'# Factura'); if(r.cancelled) return; inv.number=r.value||inv.number;
+  r=ask(inv.method,'Método'); if(r.cancelled) return; inv.method=r.value||inv.method;
+  r=ask(inv.client?.name,'Cliente'); if(r.cancelled) return; inv.client=inv.client||{}; inv.client.name=r.value||inv.client.name;
+  save(); toast('Factura actualizada');
+}
+
+/* ===================== Cotizaciones (crear + historial) ===================== */
+function renderQuotesKPI(){
+  const now=new Date();
+  const mStart=new Date(now.getFullYear(),now.getMonth(),1).toISOString().slice(0,10);
+  const today=now.toISOString().slice(0,10);
+  const countMonth=state.quotes.filter(q=>inRange(q.date,mStart,today)).length;
+  $('#quoCountMonth') && ($('#quoCountMonth').textContent=String(countMonth));
+}
+function wireQuotesCreate(){
+  $('#quoAddItem')?.addEventListener('click', ()=> addItemRow($('#quoItemsTable tbody')));
+  $('#quoCalc')?.addEventListener('click', ()=>{
+    const tb=$('#quoItemsTable tbody'); paintRowAmounts(tb);
+    const t=calcTotals(readItemsFromTable(tb));
+    $('#quoSubtotal').textContent=fmt(t.subtotal);
+    $('#quoTaxTotal').textContent=fmt(t.taxTotal);
+    $('#quoGrandTotal').textContent=fmt(t.total);
+  });
+  $('#addQuoteToday')?.addEventListener('click', ()=>{ if($('#quoDate')) $('#quoDate').value=todayStr(); });
+  $('#quoteForm')?.addEventListener('submit',(ev)=>{
+    ev.preventDefault();
+    const items=readItemsFromTable($('#quoItemsTable tbody'));
+    const t=calcTotals(items);
+    const q={
+      id:uid(),
+      date:$('#quoDate')?.value,
+      validUntil:$('#quoValidUntil')?.value,
+      number:$('#quoNumber')?.value,
+      method:$('#quoMethod')?.value,
+      client:{
+        name:$('#quoClient')?.value,
+        email:$('#quoClientEmail')?.value,
+        phone:$('#quoClientPhone')?.value,
+        address:$('#quoClientAddress')?.value
+      },
+      items, subtotal:t.subtotal, taxTotal:t.taxTotal, total:t.total,
+      note:$('#quoNote')?.value, terms:$('#quoTerms')?.value
+    };
+    if(!q.date || !q.number) return toast('Fecha y número requeridos');
+    state.quotes.push(q); save(); toast('Cotización creada');
+    ev.target.reset();
+    $('#quoItemsTable tbody').innerHTML='';
+    $('#quoSubtotal').textContent='—'; $('#quoTaxTotal').textContent='—'; $('#quoGrandTotal').textContent='—';
+  });
+}
+function renderQuotesHistory(q=''){
+  const tb=$('#quotesTable tbody'); if(!tb) return; tb.innerHTML='';
+  const s=(q||'').toLowerCase().trim();
+  state.quotes.slice().sort(byDateDesc).forEach(qu=>{
+    const hay = `${qu.number||''} ${qu.client?.name||''}`.toLowerCase();
+    if(s && !hay.includes(s)) return;
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td>${qu.date||''}</td>
+      <td>${qu.number||''}</td>
+      <td>${qu.client?.name||''}</td>
+      <td>${fmt(qu.total||0)}</td>
+      <td>${qu.method||''}</td>
+      <td class="row-actions">
+        <button class="btn-outline" data-pdf="${qu.id}">PDF</button>
+        <button class="btn-outline" data-edit="${qu.id}">Editar</button>
+        <button class="btn-outline" data-del="${qu.id}">Eliminar</button>
+      </td>`;
+    tb.appendChild(tr);
+  });
+  $$('#quotesTable [data-del]').forEach(b=> b.onclick=()=>{ state.quotes = state.quotes.filter(x=>x.id!==b.dataset.del); save(); toast('Cotización eliminada'); });
+  $$('#quotesTable [data-edit]').forEach(b=> b.onclick=()=> editQuoteBasic(b.dataset.edit));
+  $$('#quotesTable [data-pdf]').forEach(b=> b.onclick=()=> generatePDF('quotes', b.dataset.pdf));
+}
+function editQuoteBasic(id){
+  const i=state.quotes.findIndex(x=>x.id===id); if(i<0) return;
+  const q=state.quotes[i];
+  let r=ask(q.date,'Fecha'); if(r.cancelled) return; q.date=r.value||q.date;
+  r=ask(q.validUntil,'Vigencia'); if(r.cancelled) return; q.validUntil=r.value||q.validUntil;
+  r=ask(q.number,'# Cotización'); if(r.cancelled) return; q.number=r.value||q.number;
+  r=ask(q.method,'Método'); if(r.cancelled) return; q.method=r.value||q.method;
+  r=ask(q.client?.name,'Cliente'); if(r.cancelled) return; q.client=q.client||{}; q.client.name=r.value||q.client.name;
+  save(); toast('Cotización actualizada');
+}
+
+/* ===================== Ordinarios / Recurrentes ===================== */
+function renderOrdinary(){
+  const tb=$('#ordinaryTable tbody'); if(!tb) return; tb.innerHTML='';
+  state.ordinary.forEach(o=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td>${o.name}</td>
+      <td>${fmt(o.amount)}</td>
+      <td>${o.freq}</td>
+      <td>${o.next}</td>
+      <td class="row-actions">
+        <button class="btn-outline" data-edit="${o.id}">Editar</button>
+        <button class="btn-outline" data-del="${o.id}">Eliminar</button>
+      </td>`;
+    tb.appendChild(tr);
+  });
+  $('#ordSumCount')&&($('#ordSumCount').textContent=state.ordinary.length.toString());
+  const next=state.ordinary.map(o=>o.next).filter(Boolean).sort()[0]||'—';
+  $('#ordSumNext')&&($('#ordSumNext').textContent=next);
+  $$('#ordinaryTable [data-del]').forEach(b=> b.onclick=()=>{ state.ordinary=state.ordinary.filter(x=>x.id!==b.dataset.del); save(); toast('Recurrente eliminado'); });
+  $$('#ordinaryTable [data-edit]').forEach(b=> b.onclick=()=> editOrdinary(b.dataset.edit));
+}
+function editOrdinary(id){
+  const i=state.ordinary.findIndex(x=>x.id===id); if(i<0) return;
+  const o=state.ordinary[i];
+  let r=ask(o.name,'Nombre'); if(r.cancelled) return; o.name=r.value||o.name;
+  r=askNumber(o.amount,'Monto'); if(r.cancelled) return; o.amount=r.value;
+  r=ask(o.freq,'Frecuencia'); if(r.cancelled) return; o.freq=r.value||o.freq;
+  r=ask(o.next,'Próxima fecha'); if(r.cancelled) return; o.next=r.value||o.next;
+  save(); toast('Recurrente actualizado');
+}
+function wireOrdinary(){
+  $('#ordinaryForm')?.addEventListener('submit',(ev)=>{
+    ev.preventDefault();
+    const rec={ id:uid(), name:$('#ordName')?.value, amount:Number($('#ordAmount')?.value||0), freq:$('#ordFreq')?.value, next:$('#ordNext')?.value };
+    if(!rec.next) return toast('Próxima fecha requerida');
+    state.ordinary.push(rec); save(); toast('Recurrente guardado'); ev.target.reset();
+  });
+  $('#addOrd')?.addEventListener('click', ()=>{ if($('#ordNext')) $('#ordNext').value=todayStr(); $('#ordAmount')?.focus(); });
+}
+
+/* ===================== Presupuestos ===================== */
+function spendByCategory(cat){
+  return state.expensesDaily.filter(e=>e.category===cat).reduce((a,b)=>a+Number(b.amount||0),0);
+}
+function renderBudgets(){
+  const wrap=$('#budgetBars'); if(!wrap) return; wrap.innerHTML='';
+  state.budgets.forEach(b=>{
+    const used=spendByCategory(b.category);
+    const pct=b.limit>0?Math.min(100,Math.round(100*used/b.limit)):0;
+    const div=document.createElement('div');
+    div.className='budget'+(used>b.limit?' over':'');
+    div.innerHTML=`
+      <div class="row"><strong>${b.category}</strong> · Límite ${fmt(b.limit)} · Usado ${fmt(used)} (${pct}%)</div>
+      <div class="meter"><span style="width:${pct}%"></span></div>
+      <div class="row-actions">
+        <button class="btn-outline" data-edit="${b.id}">Editar</button>
+        <button class="btn-outline" data-del="${b.id}">Eliminar</button>
+      </div>`;
+    wrap.appendChild(div);
+  });
+  $$('#budgetBars [data-del]').forEach(b=> b.onclick=()=>{ state.budgets=state.budgets.filter(x=>x.id!==b.dataset.del); save(); toast('Presupuesto eliminado'); });
+  $$('#budgetBars [data-edit]').forEach(b=> b.onclick=()=> editBudget(b.dataset.edit));
+}
+function editBudget(id){
+  const i=state.budgets.findIndex(x=>x.id===id); if(i<0) return;
+  const b=state.budgets[i];
+  let r=ask(b.category,'Categoría'); if(r.cancelled) return; b.category=r.value||b.category;
+  r=askNumber(b.limit,'Límite'); if(r.cancelled) return; b.limit=r.value;
+  save(); toast('Presupuesto actualizado');
+}
+function wireBudgets(){
+  $('#budgetForm')?.addEventListener('submit',(ev)=>{
+    ev.preventDefault();
+    const rec={ id:uid(), category:$('#budCategory')?.value, limit:Number($('#budLimit')?.value||0) };
+    state.budgets.push(rec); save(); toast('Presupuesto guardado'); ev.target.reset();
+  });
+  $('#addBudget')?.addEventListener('click', ()=>{ $('#budCategory')?.focus(); });
+}
+
+/* ===================== Gastos Personales ===================== */
+function renderPersonal(){
+  const tb=$('#personalTable tbody'); if(!tb) return; tb.innerHTML='';
+  let total=0;
+  state.personal.slice().sort(byDateDesc).forEach(p=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td>${p.date||''}</td>
+      <td>${p.category||''}</td>
+      <td>${p.desc||''}</td>
+      <td>${fmt(p.amount)}</td>
+      <td class="row-actions">
+        <button class="btn-outline" data-edit="${p.id}">Editar</button>
+        <button class="btn-outline" data-del="${p.id}">Eliminar</button>
+      </td>`;
+    tb.appendChild(tr);
+    total+=Number(p.amount||0);
+  });
+  $('#perSumTotal')&&($('#perSumTotal').textContent=fmt(total));
+  $$('#personalTable [data-del]').forEach(b=> b.onclick=()=>{ state.personal=state.personal.filter(x=>x.id!==b.dataset.del); save(); toast('Gasto personal eliminado'); });
+  $$('#personalTable [data-edit]').forEach(b=> b.onclick=()=> editPersonal(b.dataset.edit));
+}
+function editPersonal(id){
+  const i=state.personal.findIndex(x=>x.id===id); if(i<0) return;
+  const p=state.personal[i];
+  let r=ask(p.date,'Fecha'); if(r.cancelled) return; p.date=r.value||p.date;
+  r=ask(p.category,'Categoría'); if(r.cancelled) return; p.category=r.value||p.category;
+  r=ask(p.desc,'Descripción'); if(r.cancelled) return; p.desc=r.value||p.desc;
+  r=askNumber(p.amount,'Monto'); if(r.cancelled) return; p.amount=r.value;
+  save(); toast('Gasto personal actualizado');
+}
+function wirePersonal(){
+  $('#personalForm')?.addEventListener('submit',(ev)=>{
+    ev.preventDefault();
+    const rec={ id:uid(), date:$('#perDate')?.value, category:$('#perCategory')?.value, desc:$('#perDesc')?.value, amount:Number($('#perAmount')?.value||0) };
+    if(!rec.date) return toast('Fecha requerida');
+    state.personal.push(rec); save(); toast('Gasto personal guardado'); ev.target.reset();
+  });
+  $('#addPersonal')?.addEventListener('click', ()=>{ if($('#perDate')) $('#perDate').value=todayStr(); $('#perAmount')?.focus(); });
+}
