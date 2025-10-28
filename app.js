@@ -708,3 +708,180 @@ function wirePersonal(){
   });
   $('#addPersonal')?.addEventListener('click', ()=>{ if($('#perDate')) $('#perDate').value=todayStr(); $('#perAmount')?.focus(); });
 }
+/* =========================================================
+   Nexus Finance — app.js (Parte 3 de 3)
+   Sección: Configuración, Conciliación Bancaria, PDF, Init
+   ========================================================= */
+
+/* ===================== Configuración ===================== */
+function wireSettings(){
+  const f=$('#settingsForm'); if(!f) return;
+
+  f.addEventListener('submit',(ev)=>{
+    ev.preventDefault();
+    state.settings.businessName = $('#setName')?.value;
+    state.settings.currency      = $('#setCurr')?.value;
+    save(); toast('Configuración guardada');
+  });
+
+  $('#setReset')?.addEventListener('click',()=>{
+    if(confirm('¿Seguro que deseas restablecer todo?')){
+      if(confirm('Confirmar eliminación de todos los datos locales.')){
+        localStorage.clear(); location.reload();
+      }
+    }
+  });
+
+  $('#setExport')?.addEventListener('click',()=>{
+    const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+    const a=document.createElement('a');
+    a.href=URL.createObjectURL(blob);
+    a.download='finanzas-backup.json';
+    a.click();
+  });
+
+  $('#setImport')?.addEventListener('change',ev=>{
+    const f=ev.target.files[0]; if(!f) return;
+    const r=new FileReader();
+    r.onload=()=>{
+      try{
+        const data=JSON.parse(r.result);
+        if(confirm('¿Reemplazar datos actuales con los importados?')){
+          state=data; save(); toast('Datos importados correctamente'); location.reload();
+        }
+      }catch{ toast('Archivo JSON inválido'); }
+    };
+    r.readAsText(f);
+  });
+
+  // Logo
+  $('#setLogo')?.addEventListener('change',ev=>{
+    const f=ev.target.files[0]; if(!f) return;
+    const r=new FileReader();
+    r.onload=()=>{ state.settings.logoBase64=r.result; save(); toast('Logo actualizado'); applyTheme(); };
+    r.readAsDataURL(f);
+  });
+  $('#setLogoDel')?.addEventListener('click',()=>{
+    state.settings.logoBase64=''; save(); toast('Logo eliminado'); applyTheme();
+  });
+}
+
+/* ===================== Conciliación Bancaria ===================== */
+function wireReconciliation(){
+  const f=$('#bankFile'); if(!f) return;
+  f.addEventListener('change',ev=>{
+    const file=ev.target.files[0]; if(!file) return;
+    const reader=new FileReader();
+    reader.onload=()=>{
+      try{
+        const lines=reader.result.split(/\r?\n/).filter(l=>l.trim().length>5);
+        const entries=lines.map(l=>{
+          const parts=l.split(',').map(p=>p.trim());
+          return { date:parts[0], desc:parts[1], amount:parseFloat(parts[2].replace('$',''))||0 };
+        });
+        const totalBank = entries.reduce((a,b)=>a+b.amount,0);
+        const totalApp = [...state.incomesDaily, ...state.expensesDaily.map(e=>({amount:-e.amount}))].reduce((a,b)=>a+(Number(b.amount)||0),0);
+        const diff = totalBank - totalApp;
+
+        $('#recBankTotal').textContent = fmt(totalBank);
+        $('#recAppTotal').textContent  = fmt(totalApp);
+        $('#recDiff').textContent      = fmt(diff);
+
+        const tb=$('#recTable tbody'); tb.innerHTML='';
+        entries.forEach(e=>{
+          const tr=document.createElement('tr');
+          tr.innerHTML=`
+            <td>${e.date}</td>
+            <td>${e.desc}</td>
+            <td>${fmt(e.amount)}</td>`;
+          tb.appendChild(tr);
+        });
+
+        toast('Archivo bancario cargado y conciliado');
+      }catch{ toast('Error procesando el archivo'); }
+    };
+    reader.readAsText(file);
+  });
+}
+
+/* ===================== Exportar PDF ===================== */
+function generatePDF(section,id){
+  const css = `
+    <style>
+      body{font-family:Arial,sans-serif;color:#000;background:#fff;}
+      h1{font-size:18pt;margin-bottom:10px;}
+      table{width:100%;border-collapse:collapse;font-size:10pt;}
+      th,td{border:1px solid #333;padding:6px;text-align:left;}
+      th{background:#eee;}
+      .total{font-weight:bold;}
+      footer{text-align:center;font-size:9pt;margin-top:20px;color:#666;}
+    </style>`;
+
+  let html = '';
+  const biz = state.settings.businessName;
+  const logo = state.settings.logoBase64 ? `<img src="${state.settings.logoBase64}" style="max-height:80px;">` : '';
+  
+  if(section==='invoices'){
+    const inv = state.invoices.find(x=>x.id===id);
+    if(!inv) return toast('Factura no encontrada');
+    html = `
+      <h1>Factura #${inv.number}</h1>
+      <div>${logo}</div>
+      <p><strong>${biz}</strong></p>
+      <p>Cliente: ${inv.client?.name||''}</p>
+      <p>Fecha: ${inv.date||''} &nbsp;&nbsp; Vence: ${inv.dueDate||''}</p>
+      <table>
+        <thead><tr><th>Descripción</th><th>Cant.</th><th>Precio</th><th>Impuesto %</th><th>Total</th></tr></thead>
+        <tbody>${inv.items.map(i=>`<tr><td>${i.desc}</td><td>${i.qty}</td><td>${fmt(i.price)}</td><td>${i.tax}</td><td>${fmt(i.qty*i.price*(1+i.tax/100))}</td></tr>`).join('')}</tbody>
+      </table>
+      <p class="total">Subtotal: ${fmt(inv.subtotal)}<br>Impuestos: ${fmt(inv.taxTotal)}<br>Total: ${fmt(inv.total)}</p>
+      <footer>Factura generada automáticamente desde Nexus Finance</footer>`;
+  }
+  else if(section==='quotes'){
+    const q = state.quotes.find(x=>x.id===id);
+    if(!q) return toast('Cotización no encontrada');
+    html = `
+      <h1>Cotización #${q.number}</h1>
+      <div>${logo}</div>
+      <p><strong>${biz}</strong></p>
+      <p>Cliente: ${q.client?.name||''}</p>
+      <p>Fecha: ${q.date||''} &nbsp;&nbsp; Vigencia: ${q.validUntil||''}</p>
+      <table>
+        <thead><tr><th>Descripción</th><th>Cant.</th><th>Precio</th><th>Impuesto %</th><th>Total</th></tr></thead>
+        <tbody>${q.items.map(i=>`<tr><td>${i.desc}</td><td>${i.qty}</td><td>${fmt(i.price)}</td><td>${i.tax}</td><td>${fmt(i.qty*i.price*(1+i.tax/100))}</td></tr>`).join('')}</tbody>
+      </table>
+      <p class="total">Subtotal: ${fmt(q.subtotal)}<br>Impuestos: ${fmt(q.taxTotal)}<br>Total: ${fmt(q.total)}</p>
+      <footer>Cotización generada automáticamente desde Nexus Finance</footer>`;
+  }
+  else{
+    html = `<h1>Reporte: ${section}</h1><p>Generado el ${new Date().toLocaleString()}</p>`;
+  }
+
+  const w = window.open('', '_blank');
+  w.document.write(css + html);
+  w.document.close();
+  w.print();
+}
+
+/* ===================== Inicialización ===================== */
+function refreshAll(){
+  renderExpenses(); renderIncomes(); renderPayments();
+  renderOrdinary(); renderBudgets(); renderPersonal();
+  renderInvoicesKPI(); renderQuotesKPI();
+}
+
+function wireAll(){
+  updateLoginUI();
+  wireExpenses(); wireIncomes(); wirePayments();
+  wireOrdinary(); wireBudgets(); wirePersonal();
+  wireInvoicesCreate(); wireQuotesCreate();
+  wireSettings(); wireReconciliation();
+  initCatalogs(); applyTheme();
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  wireAll();
+  refreshAll();
+  if(!state.settings.pinHash){ showView('login'); }
+  else { showView('login'); } // Bloquea siempre hasta PIN
+});
