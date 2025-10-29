@@ -1317,3 +1317,30 @@ document.addEventListener('DOMContentLoaded', wireAll);
   // y luego tras guardar/eliminar: updatePayrollSummaryFromTable();
 
 })();
+// ===== Cerrar sesión y volver al login PIN =====
+(function(){
+  const $ = (id) => document.getElementById(id);
+  const logoutBtn = $("logoutBtn");
+  if (!logoutBtn) return;
+
+  logoutBtn.addEventListener("click", () => {
+    try {
+      // Borra PIN temporal o estado de sesión
+      localStorage.removeItem("pinVerified");
+      sessionStorage.clear();
+
+      // Muestra nuevamente el login y oculta todo el resto
+      const loginOverlay = document.getElementById("loginOverlay");
+      if (loginOverlay) loginOverlay.style.display = "flex";
+
+      document.body.classList.add("locked");
+      [...document.querySelectorAll(".view, header, footer")].forEach(el => {
+        el.style.display = "none";
+      });
+
+      alert("Sesión cerrada correctamente");
+    } catch (err) {
+      console.error("Error al cerrar sesión:", err);
+    }
+  });
+})();
