@@ -138,48 +138,75 @@ function showView(id){
   window.scrollTo({top:0, behavior:'smooth'});
 }
 
-/* ===================== Login / PIN (FIX móvil/Enter) ===================== */
+/* ===================== Login / PIN — FIX modal/overlay ===================== */
 async function sha256(msg){
   const enc = new TextEncoder().encode(msg);
   const buf = await crypto.subtle.digest('SHA-256', enc);
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
-const attempts = ()=> Number(localStorage.getItem(LOCK_KEY)||0);
-const setAttempts = n => localStorage.setItem(LOCK_KEY, String(n));
-const attemptsLeft = ()=> Math.max(0, 5 - attempts());
+const MAX_ATTEMPTS = 5;
+const attempts     = () => Number(localStorage.getItem(LOCK_KEY)||0);
+const setAttempts  = n  => localStorage.setItem(LOCK_KEY, String(n));
+const attemptsLeft = () => Math.max(0, MAX_ATTEMPTS - attempts());
 
-function getPin2Value(){
-  // soporte si #loginPIN2 es <input> o contenedor con <input>
-  const p2 = document.querySelector('#loginPIN2')?.value ??
-             document.querySelector('#loginPIN2 input')?.value ??
-             '';
-  return (p2 || '').trim();
+/* --- helpers para mostrar/ocultar el modal de login y scrim --- */
+function openLogin(){
+  const box = document.querySelector('#login');
+  if(!box) return;
+  box.style.display = 'block';
+  box.classList.add('visible');
+  box.removeAttribute('aria-hidden');
+  document.body.classList.add('modal-open');
+}
+function closeLogin(){
+  const box = document.querySelector('#login');
+  if(!box) return;
+  box.classList.remove('visible');
+  box.style.display = 'none';
+  box.setAttribute('aria-hidden','true');
+  document.body.classList.remove('modal-open','locked','dimmed');
+  const scrim = document.querySelector('#scrim, .overlay, .backdrop');
+  if(scrim){ scrim.remove(); }
 }
 
+/* — flujo principal — */
 async function handleLogin(ev){
-  if (ev) ev.preventDefault();
+  if(ev) ev.preventDefault();
+
   const createMode = !state.settings.pinHash;
-  const pinEl = document.querySelector('#loginPIN');
-  const pin = (pinEl?.value || '').trim();
-  if(!pin){ toast('Introduce un PIN'); pinEl?.focus(); return; }
+  const pinEl  = document.querySelector('#loginPIN');
+  const pin2El = document.querySelector('#loginPIN2');
+  const pin  = (pinEl?.value  || '').trim();
+  const pin2 = (pin2El?.value || '').trim();
+
+  if(!pin){ toast('Introduce tu PIN'); pinEl?.focus(); return; }
 
   if(createMode){
-    const pin2 = getPin2Value();
-    if(pin.length<4 || pin.length>8){ toast('El PIN debe tener 4–8 dígitos'); return; }
+    if(pin.length<4 || pin.length>8){ toast('El PIN debe tener entre 4 y 8 dígitos'); return; }
     if(pin!==pin2){ toast('Los PIN no coinciden'); return; }
-    state.settings.pinHash = await sha256(pin); save();
-    toast('PIN creado'); document.querySelector('#login')?.classList.remove('visible'); showView('home');
+    state.settings.pinHash = await sha256(pin);
+    save();
+    toast('PIN creado correctamente');
+    closeLogin();
+    showView('home');
+    return;
+  }
+
+  if(attempts()>=MAX_ATTEMPTS){
+    toast('Has alcanzado el número máximo de intentos');
+    return;
+  }
+
+  const ok = (await sha256(pin)) === state.settings.pinHash;
+  if(ok){
+    setAttempts(0);
+    toast('Bienvenido');
+    closeLogin();                        // <-- la clave
+    showView('home');
   }else{
-    if(attempts()>=5){ toast('Bloqueado.'); return; }
-    const ok = await sha256(pin) === state.settings.pinHash;
-    if(ok){
-      setAttempts(0); toast('Bienvenido');
-      document.querySelector('#login')?.classList.remove('visible'); showView('home');
-    }else{
-      setAttempts(attempts()+1);
-      updateLoginUI();
-      toast(`PIN incorrecto`);
-    }
+    setAttempts(attempts()+1);
+    updateLoginUI();
+    toast(`PIN incorrecto. Intentos restantes: ${attemptsLeft()}`);
   }
 }
 
@@ -187,29 +214,40 @@ function updateLoginUI(){
   const createMode = !state.settings.pinHash;
   const title = document.querySelector('#loginTitle');
   const hint  = document.querySelector('#loginHint');
-  if (title) title.textContent = createMode ? 'Crear PIN' : 'Ingresar PIN';
-  if (hint)  hint.textContent  = createMode ? 'Crea un PIN de 4–8 dígitos.' : 'Introduce tu PIN.';
-  const pin2Wrap = document.querySelector('#loginPIN2Wrap') || document.querySelector('#loginPIN2');
-  if(pin2Wrap && pin2Wrap instanceof HTMLElement){
-    pin2Wrap.style.display = createMode ? 'block' : 'none';
-  }
-  const left = attemptsLeft();
-  const a = document.querySelector('#loginAttempts');
-  if (a) a.textContent = createMode ? '' : (left===0 ? 'Bloqueado.' : `Intentos restantes: ${left}`);
-
-  // (re)wire seguro
-  const btn = document.querySelector('#loginBtn');
-  if (btn){ btn.onclick = handleLogin; }
+  const pin2Wrap = document.querySelector('#loginPIN2Wrap') || document.querySelector('#loginPIN2')?.parentElement;
+  const attemptsLabel = document.querySelector('#loginAttempts');
+  const btn  = document.querySelector('#loginBtn');
   const form = document.querySelector('#loginForm');
-  if (form){ form.onsubmit = handleLogin; }
-  // Enter en input
-  const pinInput = document.querySelector('#loginPIN');
-  if (pinInput){
-    pinInput.onkeydown = (e)=>{ if(e.key==='Enter'){ handleLogin(e); } };
-    pinInput.focus();
+  const pinEl = document.querySelector('#loginPIN');
+
+  if(title) title.textContent = createMode ? 'Crear PIN' : 'Ingresar PIN';
+  if(hint)  hint.textContent  = createMode ? 'Crea un PIN de 4–8 dígitos.' : 'Introduce tu PIN.';
+  if(pin2Wrap && pin2Wrap instanceof HTMLElement) pin2Wrap.style.display = createMode ? 'block' : 'none';
+  if(attemptsLabel) attemptsLabel.textContent = createMode ? '' : `Intentos restantes: ${attemptsLeft()}`;
+
+  if(btn)  btn.onclick  = handleLogin;
+  if(form) form.onsubmit = handleLogin;
+
+  if(pinEl){
+    pinEl.value = '';
+    pinEl.focus();
+    pinEl.onkeydown = (e)=>{ if(e.key==='Enter'){ handleLogin(e); } };
   }
+
+  // Nos aseguramos de que el modal esté visible en estado login/crear
+  openLogin();
 }
 
+/* Reset de emergencia del PIN */
+window.resetPIN = async function(){
+  if(confirm('¿Seguro que deseas borrar el PIN guardado?')){
+    state.settings.pinHash = '';
+    localStorage.removeItem(LOCK_KEY);
+    save();
+    toast('PIN eliminado. Crea uno nuevo.');
+    updateLoginUI();
+  }
+};
 /* ===================== Gastos Diarios ===================== */
 function renderExpenses(){
   const tbody = $('#expensesTable tbody'); if(!tbody) return; tbody.innerHTML='';
