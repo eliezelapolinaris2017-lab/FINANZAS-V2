@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Nexus Finance — App Web de Finanzas</title>
+  <link rel="icon" href="assets/logo.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- ===== Sidebar ===== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <img id="brandLogo" src="assets/logo.png" alt="Logo"/>
+      <div class="brand-info">
+        <strong id="brandName">Mi Negocio</strong><br/>
+        <small>Financial Web App</small>
+      </div>
+    </div>
+
+    <div class="menu">
+      <button class="nav-btn active" data-target="login">🔒 Login</button>
+      <button class="nav-btn" data-target="home">🏠 Inicio</button>
+      <button class="nav-btn" data-target="expenses">🧾 Gastos Diarios</button>
+      <button class="nav-btn" data-target="incomes">💵 Entrada de Dinero</button>
+      <button class="nav-btn" data-target="payments">👥 Pago de Nómina</button>
+      <button class="nav-btn" data-target="ordinary">📆 Gastos Ordinarios</button>
+      <button class="nav-btn" data-target="personal">👤 Gastos Personales</button>
+      <button class="nav-btn" data-target="invoices">🧮 Crear Factura</button>
+      <button class="nav-btn" data-target="invoicesHistory">📚 Historial de Facturación</button>
+      <button class="nav-btn" data-target="quotes">📝 Crear Cotización</button>
+      <button class="nav-btn" data-target="quotesHistory">📒 Historial de Cotizaciones</button>
+      <button class="nav-btn" data-target="reconciliation">🏦 Conciliación Bancaria</button>
+      <button class="nav-btn" data-target="reports">📈 Reportes</button>
+      <button class="nav-btn" data-target="exports">🖨️ Exportaciones PDF</button>
+      <button class="nav-btn" data-target="settings">⚙️ Configuración</button>
+    </div>
+  </aside>
+
+  <!-- ===== Main ===== -->
+  <main class="main">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <button id="menuToggle" class="btn-outline menu-toggle">☰</button>
+      <div class="row g grow">
+        <strong id="viewTitle">Login</strong>
+      </div>
+      <div class="cloud">
+        <span id="cloudStatus" class="muted">No conectado</span>
+        <button id="btnSignIn" class="btn-outline">Conectar Google</button>
+        <button id="btnSignOut" class="btn-outline" style="display:none">Salir</button>
+        <label class="row g">
+          <input type="checkbox" id="cloudAuto"/> Autosync
+        </label>
+        <button id="cloudPull" class="btn-outline">Cargar Nube</button>
+        <button id="cloudPush" class="btn-outline">Guardar Nube</button>
+        <button id="printBtn" class="btn">PDF</button>
+      </div>
+    </div>
+
+    <!-- ===== Vistas ===== -->
+
+    <!-- Login (bloquea pantalla completa) -->
+    <section id="login" class="view visible fullscreen-login" data-title="Login" aria-modal="true" role="dialog">
+      <div class="login-wrap">
+        <div class="card login-card">
+          <div class="card-title" id="loginTitle">Ingresar PIN</div>
+          <p id="loginHint" class="muted">Introduce tu PIN.</p>
+          <div class="form grid2">
+            <label>PIN
+              <input type="password" id="loginPIN" placeholder="4–8 dígitos" autocomplete="current-password"/>
+            </label>
+            <label id="loginPIN2" style="display:none;">Confirmar PIN
+              <input type="password" placeholder="Repetir PIN" autocomplete="new-password"/>
+            </label>
+          </div>
+          <div class="row g">
+            <button id="loginBtn" class="btn">Entrar</button>
+            <span id="loginAttempts" class="muted"></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Inicio / Dashboard -->
+    <section id="home" class="view" data-title="Inicio">
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">Ingresos del mes</div>
+          <div id="kpiIncomesMonth" class="kpi">—</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Gastos del mes</div>
+          <div id="kpiExpensesMonth" class="kpi">—</div>
+        </div>
+        <div class="card">
+          <div class="card-title">Balance del mes</div>
+          <div id="kpiBalanceMonth" class="kpi">—</div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">12 meses — Ingresos vs Gastos</div>
+        <canvas id="chart12" style="width:100%;height:180px;"></canvas>
+      </div>
+    </section>
+
+    <!-- Gastos Diarios -->
+    <section id="expenses" class="view" data-title="Gastos Diarios">
+      <div class="grid">
+        <!-- Formulario -->
+        <div class="card">
+          <div class="card-title">Registrar gasto</div>
+          <form id="expenseForm" class="grid2">
+            <label>Fecha <input type="date" id="expDate"></label>
+            <label>Categoría
+              <select id="expCategory"></select>
+            </label>
+            <label>Descripción <input type="text" id="expDesc" placeholder="Detalle del gasto"></label>
+            <label>Método
+              <select id="expMethod"></select>
+            </label>
+            <label>Monto <input type="number" step="0.01" id="expAmount"></label>
+            <label>Nota <input type="text" id="expNote" placeholder="(opcional)"></label>
+            <div class="row end g">
+              <button type="button" id="addExpense" class="btn-outline">Hoy</button>
+              <button class="btn">Guardar</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Filtros -->
+        <div class="card">
+          <div class="card-title">Filtros</div>
+          <div class="row g">
+            <label>Desde <input type="date" id="fExpFrom"/></label>
+            <label>Hasta <input type="date" id="fExpTo"/></label>
+            <button id="fExpApply" class="btn-outline">Aplicar</button>
+          </div>
+        </div>
+
+        <!-- Totales -->
+        <div class="card">
+          <div class="card-title">Totales</div>
+          <div class="row g">
+            <strong>Total:</strong> <span id="expSumTotal">—</span>
+          </div>
+          <div id="expSumPills" class="pills" style="margin-top:8px;"></div>
+        </div>
+      </div>
+
+      <!-- Tabla -->
+      <div class="card" style="margin-top:16px">
+        <div class="table-wrap">
+          <table id="expensesTable" class="table">
+            <thead>
+              <tr><th>Fecha</th><th>Categoría</th><th>Descripción</th><th>Método</th><th>Monto</th><th>Nota</th><th></th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Entrada de Dinero Diario -->
+    <section id="incomes" class="view" data-title="Entrada de Dinero">
+      <div class="grid">
+        <!-- Formulario -->
+        <div class="card">
+          <div class="card-title">Nuevo ingreso</div>
+          <form id="incomeForm" class="grid2">
+            <label>Fecha <input type="date" id="incDate"/></label>
+            <label>Cliente/Origen <input type="text" id="incClient" placeholder="Nombre del cliente o fuente"/></label>
+            <label>Método
+              <select id="incMethod">
+                <option>Efectivo</option>
+                <option>Tarjeta</option>
+                <option>Cheque</option>
+                <option>ATH Móvil</option>
+                <option>Transferencia</option>
+              </select>
+            </label>
+            <label>Monto <input type="number" step="0.01" id="incAmount" placeholder="0.00"/></label>
+            <div class="row end g">
+              <button type="button" id="addIncome" class="btn-outline">Hoy</button>
+              <button class="btn">Guardar</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Filtros -->
+        <div class="card">
+          <div class="card-title">Filtros</div>
+          <div class="row g">
+            <label>Desde <input type="date" id="fIncFrom"/></label>
+            <label>Hasta <input type="date" id="fIncTo"/></label>
+            <button id="fIncApply" class="btn-outline">Aplicar</button>
+          </div>
+        </div>
+
+        <!-- Totales por método -->
+        <div class="card">
+          <div class="card-title">Totales por método</div>
+          <div class="row g">
+            <strong>Total general:</strong>
+            <span id="incSumTotal">—</span>
+          </div>
+          <div id="incSumMethods" class="pills" style="margin-top:8px;"></div>
+        </div>
+      </div>
+
+      <!-- Tabla -->
+      <div class="card" style="margin-top:16px">
+        <div class="table-wrap">
+          <table id="incomesTable" class="table">
+            <thead>
+              <tr><th>Fecha</th><th>Cliente</th><th>Método</th><th>Monto</th><th></th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Pago de Nómina (con retenciones) -->
+    <section id="payments" class="view" data-title="Pago de Nómina">
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">Registrar pago</div>
+          <form id="paymentForm" class="grid2">
+            <label>Fecha <input type="date" id="payDate"/></label>
+            <label>Empleado/Beneficiario <input type="text" id="payTo"/></label>
+            <label>Categoría <input type="text" id="payCategory" placeholder="Nómina, Servicio, etc."/></label>
+
+            <!-- Bloque de Retenciones -->
+            <div class="divider"></div>
+            <div class="full"><strong>Retenciones</strong></div>
+            <label>Monto bruto <input type="number" step="0.01" id="payGross" placeholder="0.00" /></label>
+            <label>ISR (Impuesto) <input type="number" step="0.01" id="payRetISR" placeholder="0.00" /></label>
+            <label>Seguro Social <input type="number" step="0.01" id="payRetSS" placeholder="0.00" /></label>
+            <label>Otras deducciones <input type="number" step="0.01" id="payRetOther" placeholder="0.00" /></label>
+            <label>Monto neto (auto) <input type="number" step="0.01" id="payNet" placeholder="0.00" readonly/></label>
+
+            <!-- Campo oculto de compatibilidad -->
+            <input type="hidden" id="payAmount" />
+
+            <label>Estado
+              <select id="payStatus">
+                <option>Pendiente</option>
+                <option>Pagado</option>
+              </select>
+            </label>
+            <div class="row end g">
+              <button type="button" id="addPayment" class="btn-outline">Hoy</button>
+              <button class="btn">Guardar</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Totales</div>
+          <div class="grid2">
+            <div>Pendiente: <strong id="paySumPend">—</strong></div>
+            <div>Pagado: <strong id="paySumPaid">—</strong></div>
+          </div>
+          <div class="row g" style="margin-top:8px">
+            <div>Total: <strong id="paySumAll">—</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="table-wrap">
+          <table id="paymentsTable" class="table">
+            <thead>
+              <tr><th>Fecha</th><th>Empleado/Benef.</th><th>Categoría</th><th>Monto</th><th>Estado</th><th></th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Gastos Ordinarios -->
+    <section id="ordinary" class="view" data-title="Gastos Ordinarios">
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">Nuevo recurrente</div>
+          <form id="ordinaryForm" class="grid2">
+            <label>Nombre <input type="text" id="ordName" placeholder="Luz, Internet, etc."/></label>
+            <label>Monto <input type="number" step="0.01" id="ordAmount"/></label>
+            <label>Frecuencia
+              <select id="ordFreq">
+                <option>Semanal</option>
+                <option>Mensual</option>
+                <option>Anual</option>
+              </select>
+            </label>
+            <label>Próxima fecha <input type="date" id="ordNext"/></label>
+            <div class="row end g">
+              <button type="button" id="addOrd" class="btn-outline">Hoy</button>
+              <button class="btn">Guardar</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Resumen</div>
+          <div>Registros: <strong id="ordSumCount">0</strong></div>
+          <div>Próximo pago: <strong id="ordSumNext">—</strong></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="table-wrap">
+          <table id="ordinaryTable" class="table">
+            <thead>
+              <tr><th>Nombre</th><th>Monto</th><th>Frecuencia</th><th>Próxima</th><th></th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Gastos Personales -->
+    <section id="personal" class="view" data-title="Gastos Personales">
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">Nuevo gasto personal</div>
+          <form id="personalForm" class="grid2">
+            <label>Fecha <input type="date" id="perDate"/></label>
+            <label>Categoría <input type="text" id="perCategory"/></label>
+            <label>Descripción <input type="text" id="perDesc"/></label>
+            <label>Monto <input type="number" step="0.01" id="perAmount"/></label>
+            <div class="row end g">
+              <button type="button" id="addPersonal" class="btn-outline">Hoy</button>
+              <button class="btn">Guardar</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Total</div>
+          <div id="perSumTotal" class="kpi">—</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="table-wrap">
+          <table id="personalTable" class="table">
+            <thead>
+              <tr><th>Fecha</th><th>Categoría</th><th>Descripción</th><th>Monto</th><th></th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Reportes -->
+    <section id="reports" class="view" data-title="Reportes">
+      <div class="grid">
+        <div class="card"><div class="card-title">Hoy</div><div id="rToday" class="kpi">—</div><small class="muted">Ingresos / Gastos</small></div>
+        <div class="card"><div class="card-title">Semana</div><div id="rWeek" class="kpi">—</div><small class="muted">Ingresos / Gastos</small></div>
+        <div class="card"><div class="card-title">Mes</div><div id="rMonth" class="kpi">—</div><small class="muted">Ingresos / Gastos</small></div>
+        <div class="card"><div class="card-title">Año</div><div id="rYear" class="kpi">—</div><small class="muted">Ingresos / Gastos</small></div>
+      </div>
+    </section>
+
+    <!-- Crear Factura -->
+    <section id="invoices" class="view" data-title="Crear Factura">
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">Datos de factura</div>
+          <form id="invoiceForm" class="grid2">
+            <label>Fecha <input type="date" id="invDate"/></label>
+            <label>Vence <input type="date" id="invDueDate"/></label>
+            <label># Factura <input type="text" id="invNumber"/></label>
+            <label>Método
+              <select id="invMethod">
+                <option>Efectivo</option>
+                <option>Tarjeta</option>
+                <option>Cheque</option>
+                <option>ATH Móvil</option>
+                <option>Transferencia</option>
+              </select>
+            </label>
+
+            <label>Cliente <input type="text" id="invClient"/></label>
+            <label>Email <input type="email" id="invClientEmail"/></label>
+            <label>Teléfono <input type="text" id="invClientPhone"/></label>
+            <label>Dirección <input type="text" id="invClientAddress"/></label>
+
+            <label>Nota <input type="text" id="invNote"/></label>
+            <label>Términos <input type="text" id="invTerms" placeholder="Pago a 15 días, etc."/></label>
+
+            <div class="row end g">
+              <button type="button" id="addInvoiceToday" class="btn-outline">Hoy</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Ítems</div>
+          <div class="table-wrap">
+            <table id="invItemsTable" class="table">
+              <thead>
+                <tr><th>Descripción</th><th>Cant.</th><th>Precio</th><th>Imp %</th><th>Importe</th><th></th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="row g" style="margin-top:8px">
+            <button id="invAddItem" class="btn-outline" type="button">Agregar ítem</button>
+            <button id="invCalc" class="btn-outline" type="button">Calcular</button>
+            <button form="invoiceForm" class="btn">Guardar Factura</button>
+          </div>
+          <div class="row g" style="margin-top:8px">
+            <div>Subtotal: <strong id="invSubtotal">—</strong></div>
+            <div>Impuestos: <strong id="invTaxTotal">—</strong></div>
+            <div>Total: <strong id="invGrandTotal">—</strong></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">KPI</div>
+          <div>Total facturado (mes): <strong id="invSumMonth">—</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Historial de Facturación -->
+    <section id="invoicesHistory" class="view" data-title="Historial de Facturación">
+      <div class="card">
+        <div class="row g">
+          <input type="search" id="invSearch" placeholder="Buscar # factura o cliente…" class="grow"/>
+        </div>
+      </div>
+      <div class="card" style="margin-top:12px">
+        <div class="table-wrap">
+          <table id="invoicesTable" class="table">
+            <thead>
+              <tr><th>Fecha</th><th># Factura</th><th>Cliente</th><th>Total</th><th>Método</th><th></th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Crear Cotización -->
+    <section id="quotes" class="view" data-title="Crear Cotización">
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">Datos de cotización</div>
+          <form id="quoteForm" class="grid2">
+            <label>Fecha <input type="date" id="quoDate"/></label>
+            <label>Válida hasta <input type="date" id="quoValidUntil"/></label>
+            <label># Cotización <input type="text" id="quoNumber"/></label>
+            <label>Método
+              <select id="quoMethod">
+                <option>Efectivo</option>
+                <option>Tarjeta</option>
+                <option>Cheque</option>
+                <option>ATH Móvil</option>
+                <option>Transferencia</option>
+              </select>
+            </label>
+
+            <label>Cliente <input type="text" id="quoClient"/></label>
+            <label>Email <input type="email" id="quoClientEmail"/></label>
+            <label>Teléfono <input type="text" id="quoClientPhone"/></label>
+            <label>Dirección <input type="text" id="quoClientAddress"/></label>
+
+            <label>Nota <input type="text" id="quoNote"/></label>
+            <label>Términos <input type="text" id="quoTerms"/></label>
+
+            <div class="row end g">
+              <button type="button" id="addQuoteToday" class="btn-outline">Hoy</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Ítems</div>
+          <div class="table-wrap">
+            <table id="quoItemsTable" class="table">
+              <thead>
+                <tr><th>Descripción</th><th>Cant.</th><th>Precio</th><th>Imp %</th><th>Importe</th><th></th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="row g" style="margin-top:8px">
+            <button id="quoAddItem" class="btn-outline" type="button">Agregar ítem</button>
+            <button id="quoCalc" class="btn-outline" type="button">Calcular</button>
+            <button form="quoteForm" class="btn">Guardar Cotización</button>
+          </div>
+          <div class="row g" style="margin-top:8px">
+            <div>Subtotal: <strong id="quoSubtotal">—</strong></div>
+            <div>Impuestos: <strong id="quoTaxTotal">—</strong></div>
+            <div>Total: <strong id="quoGrandTotal">—</strong></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">KPI</div>
+          <div>Cotizaciones del mes: <strong id="quoCountMonth">—</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Historial de Cotizaciones -->
+    <section id="quotesHistory" class="view" data-title="Historial de Cotizaciones">
+      <div class="card">
+        <div class="row g">
+          <input type="search" id="quoSearch" placeholder="Buscar # cotización o cliente…" class="grow"/>
+        </div>
+      </div>
+      <div class="card" style="margin-top:12px">
+        <div class="table-wrap">
+          <table id="quotesTable" class="table">
+            <thead>
+              <tr><th>Fecha</th><th># Cotización</th><th>Cliente</th><th>Total</th><th>Método</th><th></th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Conciliación Bancaria -->
+    <section id="reconciliation" class="view" data-title="Conciliación Bancaria">
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">Nueva conciliación</div>
+          <form id="reconForm" class="grid2">
+            <label>Fecha <input type="date" id="reconDate"/></label>
+            <label>Saldo banco <input type="number" step="0.01" id="reconBank"/></label>
+            <label class="full">Nota <input type="text" id="reconNote" placeholder="(opcional)"/></label>
+            <div class="row end g full">
+              <button class="btn">Guardar</button>
+              <button id="reconExport" type="button" class="btn-outline">PDF</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Importar estado bancario (CSV)</div>
+          <div class="row g">
+            <label>Año de referencia <input type="number" id="reconYear" value="2025"/></label>
+            <input type="file" id="reconFile" accept=".csv" />
+            <button id="reconImportPreview" class="btn-outline">Previsualizar</button>
+            <button id="reconImportMatch" class="btn-outline">Intentar Matching</button>
+          </div>
+          <div class="row g" style="margin-top:8px">
+            <div>Total archivo: <strong id="reconImpTotal">—</strong></div>
+            <div>Coincidencias: <strong id="reconImpMatches">0</strong></div>
+            <div>Sin coincidencia: <strong id="reconImpNoMatch">0</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <div class="table-wrap">
+          <table id="reconImportTable" class="table">
+            <thead>
+              <tr><th>Fecha</th><th>Ref</th><th>Descripción</th><th>Monto</th><th>Estado</th><th>Match</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px">
+        <div class="table-wrap">
+          <table id="reconTable" class="table">
+            <thead>
+              <tr><th>Fecha</th><th>Saldo Banco</th><th>Balance App</th><th>Diferencia</th><th>Nota</th><th></th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Exportaciones PDF -->
+    <section id="exports" class="view" data-title="Exportaciones PDF">
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">Exportar vistas</div>
+          <div class="grid2">
+            <button class="btn" data-print-view="expenses">Gastos Diarios</button>
+            <button class="btn" data-print-view="incomes">Ingresos</button>
+            <button class="btn" data-print-view="payments">Pago de Nómina</button>
+            <button class="btn" data-print-view="ordinary">Gastos Ordinarios</button>
+            <button class="btn" data-print-view="personal">Gastos Personales</button>
+            <button class="btn" data-print-view="invoices">Facturas</button>
+            <button class="btn" data-print-view="quotes">Cotizaciones</button>
+            <button class="btn" data-print-view="reconciliations">Conciliación</button>
+            <button class="btn" data-print-view="reports">Reportes (resumen)</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Configuración -->
+    <section id="settings" class="view" data-title="Configuración">
+      <div class="grid">
+        <div class="card">
+          <div class="card-title">Identidad visual</div>
+          <div class="row g">
+            <img id="logoPreview" class="logo-preview" alt="Logo"/>
+            <input type="file" id="setLogo" accept="image/*" />
+            <button id="delLogo" class="btn-outline">Eliminar</button>
+          </div>
+          <div class="grid2" style="margin-top:8px">
+            <label>Nombre del negocio <input type="text" id="setName"/></label>
+            <label>Moneda
+              <select id="setCurrency">
+                <option>USD</option>
+                <option>EUR</option>
+                <option>MXN</option>
+                <option>DOP</option>
+                <option>COP</option>
+                <option>PEN</option>
+              </select>
+            </label>
+          </div>
+          <div class="grid2" style="margin-top:8px">
+            <label>Color primario <input type="color" id="colorPrimary" /></label>
+            <label>Color acento <input type="color" id="colorAccent" /></label>
+            <label>Color texto <input type="color" id="colorText" /></label>
+          </div>
+          <div class="row g" style="margin-top:8px">
+            <button id="saveSettings" class="btn">Guardar</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Seguridad</div>
+          <div class="grid2">
+            <label>PIN actual <input type="password" id="pinOld"/></label>
+            <label>Nuevo PIN <input type="password" id="pinNew"/></label>
+            <label>Confirmar PIN <input type="password" id="pinNew2"/></label>
+          </div>
+          <div class="row g" style="margin-top:8px">
+            <button id="changePIN" class="btn-outline">Cambiar PIN</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Datos</div>
+          <div class="row g">
+            <button id="exportJSON" class="btn-outline">Exportar JSON</button>
+            <label class="btn-outline">
+              Importar JSON <input type="file" id="importJSON" accept="application/json" style="display:none"/>
+            </label>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Toasts -->
+  <div id="toastContainer"></div>
+
+  <!-- JS principal -->
+  <script type="module" src="app.js"></script>
+</body>
+</html>
