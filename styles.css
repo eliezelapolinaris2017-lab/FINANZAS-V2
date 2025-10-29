@@ -280,3 +280,15 @@ input, select, textarea,
 
 /* ===== Separación vertical suave en formularios ===== */
 .card .row.g + .row.g{ margin-top:8px; }
+/* Anti overlay pegado si el modal se cerró */
+body:not(.modal-open) .overlay,
+body:not(.modal-open) .backdrop,
+body:not(.modal-open) #scrim {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+#login[aria-hidden="true"] {
+  display: none !important;
+  opacity: 0 !important;
+}
