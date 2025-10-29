@@ -138,7 +138,7 @@ function showView(id){
   window.scrollTo({top:0, behavior:'smooth'});
 }
 
-/* ===================== Login / PIN ===================== */
+/* ===================== Login / PIN (FIX móvil/Enter) ===================== */
 async function sha256(msg){
   const enc = new TextEncoder().encode(msg);
   const buf = await crypto.subtle.digest('SHA-256', enc);
@@ -147,33 +147,67 @@ async function sha256(msg){
 const attempts = ()=> Number(localStorage.getItem(LOCK_KEY)||0);
 const setAttempts = n => localStorage.setItem(LOCK_KEY, String(n));
 const attemptsLeft = ()=> Math.max(0, 5 - attempts());
-async function handleLogin(){
+
+function getPin2Value(){
+  // soporte si #loginPIN2 es <input> o contenedor con <input>
+  const p2 = document.querySelector('#loginPIN2')?.value ??
+             document.querySelector('#loginPIN2 input')?.value ??
+             '';
+  return (p2 || '').trim();
+}
+
+async function handleLogin(ev){
+  if (ev) ev.preventDefault();
   const createMode = !state.settings.pinHash;
-  const pin = $('#loginPIN')?.value?.trim(); if(!pin) return toast('Introduce un PIN');
+  const pinEl = document.querySelector('#loginPIN');
+  const pin = (pinEl?.value || '').trim();
+  if(!pin){ toast('Introduce un PIN'); pinEl?.focus(); return; }
+
   if(createMode){
-    const pin2 = $('#loginPIN2 input, #loginPIN2')?.value || $('#loginPIN2')?.value;
-    const confirmVal = (typeof pin2 === 'string') ? pin2.trim() : $('#loginPIN2 input')?.value?.trim();
-    const p2 = confirmVal || '';
-    if(pin.length<4 || pin.length>8) return toast('El PIN debe tener 4–8 dígitos');
-    if(pin!==p2) return toast('Los PIN no coinciden');
-    state.settings.pinHash = await sha256(pin); save(); toast('PIN creado');
-    $('#login')?.classList.remove('visible'); showView('home');
+    const pin2 = getPin2Value();
+    if(pin.length<4 || pin.length>8){ toast('El PIN debe tener 4–8 dígitos'); return; }
+    if(pin!==pin2){ toast('Los PIN no coinciden'); return; }
+    state.settings.pinHash = await sha256(pin); save();
+    toast('PIN creado'); document.querySelector('#login')?.classList.remove('visible'); showView('home');
   }else{
-    if(attempts()>=5) return toast('Bloqueado.');
+    if(attempts()>=5){ toast('Bloqueado.'); return; }
     const ok = await sha256(pin) === state.settings.pinHash;
-    if(ok){ setAttempts(0); toast('Bienvenido'); $('#login')?.classList.remove('visible'); showView('home'); }
-    else { setAttempts(attempts()+1); toast('PIN incorrecto'); updateLoginUI(); }
+    if(ok){
+      setAttempts(0); toast('Bienvenido');
+      document.querySelector('#login')?.classList.remove('visible'); showView('home');
+    }else{
+      setAttempts(attempts()+1);
+      updateLoginUI();
+      toast(`PIN incorrecto`);
+    }
   }
 }
+
 function updateLoginUI(){
   const createMode = !state.settings.pinHash;
-  $('#loginTitle')  && ($('#loginTitle').textContent = createMode ? 'Crear PIN' : 'Ingresar PIN');
-  $('#loginHint')   && ($('#loginHint').textContent  = createMode ? 'Crea un PIN de 4–8 dígitos.' : 'Introduce tu PIN.');
-  const pin2Wrap = $('#loginPIN2');
-  if(pin2Wrap) pin2Wrap.style.display = createMode ? 'block' : 'none';
+  const title = document.querySelector('#loginTitle');
+  const hint  = document.querySelector('#loginHint');
+  if (title) title.textContent = createMode ? 'Crear PIN' : 'Ingresar PIN';
+  if (hint)  hint.textContent  = createMode ? 'Crea un PIN de 4–8 dígitos.' : 'Introduce tu PIN.';
+  const pin2Wrap = document.querySelector('#loginPIN2Wrap') || document.querySelector('#loginPIN2');
+  if(pin2Wrap && pin2Wrap instanceof HTMLElement){
+    pin2Wrap.style.display = createMode ? 'block' : 'none';
+  }
   const left = attemptsLeft();
-  $('#loginAttempts') && ($('#loginAttempts').textContent = createMode ? '' : (left===0 ? 'Bloqueado.' : `Intentos restantes: ${left}`));
-  $('#loginBtn')?.addEventListener('click', handleLogin);
+  const a = document.querySelector('#loginAttempts');
+  if (a) a.textContent = createMode ? '' : (left===0 ? 'Bloqueado.' : `Intentos restantes: ${left}`);
+
+  // (re)wire seguro
+  const btn = document.querySelector('#loginBtn');
+  if (btn){ btn.onclick = handleLogin; }
+  const form = document.querySelector('#loginForm');
+  if (form){ form.onsubmit = handleLogin; }
+  // Enter en input
+  const pinInput = document.querySelector('#loginPIN');
+  if (pinInput){
+    pinInput.onkeydown = (e)=>{ if(e.key==='Enter'){ handleLogin(e); } };
+    pinInput.focus();
+  }
 }
 
 /* ===================== Gastos Diarios ===================== */
