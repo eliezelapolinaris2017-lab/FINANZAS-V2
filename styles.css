@@ -495,3 +495,18 @@ form input:focus, form select:focus, form textarea:focus {
 .right { text-align: right; }
 .center { text-align: center; }
 .hidden { display: none !important; }
+/* ==== VISIBILITY CONTROL FOR SPA VIEWS ==== */
+.view { 
+  display: none;               /* Oculta todas las vistas por defecto */
+}
+.view.visible { 
+  display: block;              /* Muestra solo la vista activa */
+}
+
+/* Asegura que el login fullscreen siempre cubra todo cuando esté visible */
+.fullscreen-login.view { 
+  display: flex;               /* El login necesita flex para centrar el contenido */
+}
+.fullscreen-login.view:not(.visible) {
+  display: none;               /* Cuando no está activo, se oculta */
+}
