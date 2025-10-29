@@ -1344,3 +1344,58 @@ document.addEventListener('DOMContentLoaded', wireAll);
     }
   });
 })();
+/* ================================================
+   LOGOUT → mostrar pantalla de PIN sin refrescar
+   ================================================ */
+(function () {
+  const $ = (s) => document.querySelector(s);
+
+  // Utilidad: mostrar overlay de login y ocultar todo lo demás
+  function showLoginOverlay() {
+    // 1) Mostrar login
+    const login = $("#login"); // tu overlay tiene id="login"
+    if (login) {
+      login.classList.add("visible");
+      login.setAttribute("aria-hidden", "false");
+    }
+
+    // 2) Ocultar TODAS las vistas (SPA)
+    document.querySelectorAll(".view").forEach((sec) => {
+      if (sec.id !== "login") sec.classList.remove("visible");
+    });
+
+    // 3) Quitar estado "active" del menú
+    document.querySelectorAll(".nav-btn.active").forEach((b) => b.classList.remove("active"));
+
+    // 4) Limpiar estado de sesión PIN
+    try {
+      localStorage.removeItem("pinVerified");
+      sessionStorage.clear();
+    } catch (_) {}
+
+    // 5) Enfocar el input del PIN si existe
+    const pin = $("#loginPIN");
+    if (pin) setTimeout(() => pin.focus(), 50);
+  }
+
+  // Manejar click en el botón Salir
+  const logoutBtn = $("#logoutBtn");
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", async () => {
+      // (Opcional) Si tienes Firebase Auth y quieres cerrar la sesión de Google también:
+      try {
+        // Usa tu instancia si la tienes accesible globalmente
+        if (window.auth && typeof window.signOut === "function") {
+          await window.signOut(window.auth);
+        }
+      } catch (e) {
+        console.warn("signOut Firebase opcional falló:", e);
+      }
+
+      showLoginOverlay();
+    });
+  }
+
+  // Expone por si quieres llamarlo desde otros lugares
+  window.showLoginOverlay = showLoginOverlay;
+})();
