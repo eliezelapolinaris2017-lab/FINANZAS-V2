@@ -1206,3 +1206,114 @@ self.app = { state, generatePDF, cloudPull, cloudPush };
 
 /* ===================== Arranque ===================== */
 document.addEventListener('DOMContentLoaded', wireAll);
+/* =========================================================
+   FIX TOTALES: Conciliación (matching) + Nómina
+   (Pegar al final de app.js)
+   ========================================================= */
+
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const safeNum = (v) => {
+    const n = typeof v === "number" ? v : parseFloat(String(v).replace(/[^\d\-\.,]/g, "").replace(",", "."));
+    return isNaN(n) ? 0 : n;
+  };
+  const currencyFmt = (n) => (typeof window.fmt === "function"
+    ? window.fmt(n)
+    : Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  );
+
+  /* -------------------- CONCILIACIÓN: resumen de matching -------------------- */
+  function updateReconMatchSummaryFromTable() {
+    try {
+      const tbody = document.querySelector("#reconImportTable tbody");
+      if (!tbody) return;
+
+      let matches = 0, noMatch = 0, totalCsv = 0;
+
+      [...tbody.rows].forEach((row) => {
+        // Columnas según tu HTML: Fecha | Ref | Descripción | Monto | Match | Detalle
+        const montoCell = row.cells[3]?.textContent ?? "";
+        const matchCell = row.cells[4]?.textContent?.toLowerCase?.() ?? "";
+
+        const monto = safeNum(montoCell);
+        if (!isNaN(monto)) totalCsv += monto;
+
+        if (matchCell) {
+          if (matchCell.includes("✔") || matchCell.includes("match") || matchCell.includes("sí") || matchCell.includes("si") || matchCell.includes("true")) {
+            matches++;
+          } else {
+            noMatch++;
+          }
+        }
+      });
+
+      if ($("matchCount")) $("matchCount").textContent = String(matches);
+      if ($("unmatchedCount")) $("unmatchedCount").textContent = String(noMatch);
+      // Si ya tienes este total funcionando, esto no molesta; si no, lo llena:
+      if ($("reconImpTotal") && $("reconImpTotal").textContent.trim() === "—") {
+        $("reconImpTotal").textContent = currencyFmt(totalCsv);
+      }
+    } catch (e) {
+      console.warn("updateReconMatchSummaryFromTable error:", e);
+    }
+  }
+
+  // Llamar después de “Previsualizar” y “Matching”
+  const btnPrev = $("reconImportPreview");
+  const btnMatch = $("reconImportMatch");
+  if (btnPrev) btnPrev.addEventListener("click", () => setTimeout(updateReconMatchSummaryFromTable, 0));
+  if (btnMatch) btnMatch.addEventListener("click", () => setTimeout(updateReconMatchSummaryFromTable, 0));
+
+  // Observar cambios en la tabla (agregar/eliminar filas)
+  const reconTbody = document.querySelector("#reconImportTable tbody");
+  if (reconTbody) {
+    new MutationObserver(() => setTimeout(updateReconMatchSummaryFromTable, 0))
+      .observe(reconTbody, { childList: true });
+  }
+  // Intento inicial por si llega con datos
+  document.addEventListener("DOMContentLoaded", () => setTimeout(updateReconMatchSummaryFromTable, 0));
+
+
+  /* -------------------- NÓMINA: totales arriba -------------------- */
+  function updatePayrollSummaryFromTable() {
+    try {
+      const tbody = document.querySelector("#paymentsTable tbody");
+      if (!tbody) return;
+
+      // Columnas en tu HTML: Fecha | Empleado | Categoría | Neto | Estado | Acciones
+      let total = 0, paid = 0;
+
+      [...tbody.rows].forEach((row) => {
+        const netoCell = row.cells[3]?.textContent ?? "0";
+        const estadoCell = row.cells[4]?.textContent?.toLowerCase?.() ?? "";
+        const neto = safeNum(netoCell);
+
+        total += neto;
+        if (estadoCell.startsWith("pagad")) paid += neto; // “Pagado”
+      });
+
+      const pending = total - paid;
+
+      if ($("payrollTotal"))   $("payrollTotal").textContent   = currencyFmt(total);
+      if ($("payrollPaid"))    $("payrollPaid").textContent    = currencyFmt(paid);
+      if ($("payrollPending")) $("payrollPending").textContent = currencyFmt(pending);
+    } catch (e) {
+      console.warn("updatePayrollSummaryFromTable error:", e);
+    }
+  }
+
+  // Recalcular al cargar
+  document.addEventListener("DOMContentLoaded", () => setTimeout(updatePayrollSummaryFromTable, 0));
+
+  // Observar cambios en tabla de nómina (cuando agregas/eliminas/editar filas)
+  const payTbody = document.querySelector("#paymentsTable tbody");
+  if (payTbody) {
+    new MutationObserver(() => setTimeout(updatePayrollSummaryFromTable, 0))
+      .observe(payTbody, { childList: true, subtree: true, characterData: true });
+  }
+
+  // Si tu código ya tiene funciones propias que tocan Nómina, puedes llamar manualmente:
+  // window.updatePayrollSummaryFromTable = updatePayrollSummaryFromTable;
+  // y luego tras guardar/eliminar: updatePayrollSummaryFromTable();
+
+})();
