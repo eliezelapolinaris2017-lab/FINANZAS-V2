@@ -405,3 +405,78 @@ table.data tbody tr:hover{
 small, .small{ color: var(--text-dim); }
 a{ color: var(--accent); text-decoration:none; }
 a:hover{ text-decoration:underline; }
+/* ====== FIX 1: Sidebar con scroll ====== */
+.sidebar{
+  display:flex;
+  flex-direction:column;
+  overflow: hidden;              /* contenedor */
+}
+.sidebar .brand{ flex: 0 0 auto; }
+.sidebar .menu{
+  flex: 1 1 auto;
+  overflow-y: auto;              /* <- scroll vertical del menú */
+  padding-right: 6px;            /* espacio para scrollbar */
+}
+.sidebar .menu::-webkit-scrollbar{ width: 8px; }
+.sidebar .menu::-webkit-scrollbar-track{ background: #0c1016; border-radius: 8px; }
+.sidebar .menu::-webkit-scrollbar-thumb{ background: rgba(199,162,75,0.35); border-radius: 8px; }
+.sidebar .menu::-webkit-scrollbar-thumb:hover{ background: rgba(199,162,75,0.5); }
+
+/* ====== FIX 2: Píldoras/encasillados en fila, compactos, junto a totales ====== */
+/* Contenedor de fila para título + totales + píldoras */
+.row.totals-inline{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap: wrap;
+}
+
+/* Tarjetas de total: compactas y alineadas a la derecha */
+.stats-wrap{
+  display:flex;                  /* antes grid -> ahora fila flexible */
+  gap:8px;
+  align-items:center;
+  flex-wrap: wrap;
+}
+.stat-card{
+  padding:8px 10px;
+  border-radius:10px;
+}
+.stat-card .label{ font-size:.85rem; }
+.stat-card .value{ font-size:.95rem; }
+
+/* Píldoras: en fila, más pequeñas */
+.pills,
+#expSumPills,
+#incSumMethods{
+  display:flex;                  /* <- fila flexible */
+  flex-wrap: wrap;               /* saltan de línea si no caben */
+  gap:8px;
+  margin: 6px 0 0;
+}
+.pills span,
+#expSumPills span,
+#incSumMethods span{
+  flex: 0 1 180px;               /* ancho objetivo (ajusta 160–200px si quieres) */
+  padding:6px 8px;               /* más compacto */
+  font-size:.86rem;              /* más pequeño */
+  border-radius: 9px;
+}
+.pills span .value,
+#expSumPills span .value,
+#incSumMethods span .value{
+  font-size:.9rem;
+}
+
+/* ====== FIX 3: Cabeceras de totales arriba, todo en una misma línea ====== */
+/* Usa esta clase en el contenedor de “Totales del período / por método” para alinear en fila */
+.card .header-inline{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap: wrap;
+}
+
+/* ====== (Opcional) Ajuste de tablas para que no empujen los contenedores ====== */
+table.data{ table-layout: auto; }
