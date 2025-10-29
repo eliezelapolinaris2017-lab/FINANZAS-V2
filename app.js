@@ -1399,3 +1399,110 @@ document.addEventListener('DOMContentLoaded', wireAll);
   // Expone por si quieres llamarlo desde otros lugares
   window.showLoginOverlay = showLoginOverlay;
 })();
+/* =========================================================
+   Conciliación: contar Coincidencias / No encontradas correctamente
+   (PÉGALO AL FINAL DE app.js)
+   ========================================================= */
+(function () {
+  const $ = (id) => document.getElementById(id);
+
+  // Normaliza y detecta "match" de forma robusta
+  function isMatch(text) {
+    const t = String(text || "")
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .trim();
+
+    // Señales positivas claras
+    const positives = [
+      "✔", "✓", "match", "coincide", "coincidencia", "encontrado",
+      "found", "ok", "true", "sí", "si"
+    ];
+
+    // Señales negativas claras
+    const negatives = [
+      "✖", "x", "no coincide", "sin coincidencia", "no encontrado",
+      "no match", "no", "false", "pendiente", "-"
+    ];
+
+    // Si contiene frase negativa explícita, es NO-MATCH
+    if (negatives.some(n => t.includes(n))) return false;
+
+    // Si contiene positiva (y no hay "no " antes), es MATCH
+    if (positives.some(p => t.includes(p))) return true;
+
+    // Si viene como data-flag (por clases) – opcional
+    return false;
+  }
+
+  // Suma segura de números del CSV importado
+  function safeNum(v) {
+    const n = typeof v === "number"
+      ? v
+      : parseFloat(String(v).replace(/[^\d\-.,]/g, "").replace(",", "."));
+    return isNaN(n) ? 0 : n;
+  }
+
+  // Recalcula desde la tabla de importación (previsualización/matching)
+  function updateReconMatchSummaryFromTable() {
+    const tbody = document.querySelector("#reconImportTable tbody");
+    if (!tbody) return;
+
+    let matches = 0;
+    let noMatch = 0;
+    let totalCsv = 0;
+
+    [...tbody.rows].forEach((row) => {
+      // Columnas: 0 Fecha | 1 Ref | 2 Descripción | 3 Monto | 4 Match | 5 Detalle
+      const monto = safeNum(row.cells[3]?.textContent || "0");
+      const matchText = row.cells[4]?.textContent || row.cells[4]?.innerText || "";
+
+      totalCsv += monto;
+
+      if (isMatch(matchText)) {
+        matches++;
+      } else {
+        // Si la celda está vacía o tiene negativo -> contar como NO ENCONTRADA
+        noMatch++;
+      }
+    });
+
+    if ($("matchCount")) $("matchCount").textContent = String(matches);
+    if ($("unmatchedCount")) $("unmatchedCount").textContent = String(noMatch);
+    if ($("reconImpTotal")) $("reconImpTotal").textContent = (typeof window.fmt === "function")
+      ? window.fmt(totalCsv)
+      : totalCsv.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    // (Opcional) Colorear tarjetas según estado
+    colorMatchCards(matches, noMatch);
+  }
+
+  function colorMatchCards(matches, noMatch) {
+    const ok = document.querySelector(".match-card:nth-child(1)");
+    const bad = document.querySelector(".match-card:nth-child(2)");
+    if (ok) ok.style.borderColor = noMatch === 0 ? "rgba(52,199,89,0.8)" : "rgba(199,162,75,0.45)";
+    if (bad) bad.style.borderColor = noMatch > 0 ? "rgba(255,99,71,0.8)" : "rgba(199,162,75,0.45)";
+  }
+
+  // Observa cambios en la tabla y también reacciona a los botones
+  function wireReconObservers() {
+    const tbody = document.querySelector("#reconImportTable tbody");
+    if (tbody) {
+      new MutationObserver(() => setTimeout(updateReconMatchSummaryFromTable, 0))
+        .observe(tbody, { childList: true, subtree: true, characterData: true });
+    }
+    const btnPrev = $("reconImportPreview");
+    const btnMatch = $("reconImportMatch");
+    if (btnPrev) btnPrev.addEventListener("click", () => setTimeout(updateReconMatchSummaryFromTable, 0));
+    if (btnMatch) btnMatch.addEventListener("click", () => setTimeout(updateReconMatchSummaryFromTable, 0));
+  }
+
+  // Inicial
+  document.addEventListener("DOMContentLoaded", () => {
+    wireReconObservers();
+    setTimeout(updateReconMatchSummaryFromTable, 0);
+  });
+
+  // Exponer por si quieres llamarlo manualmente desde tu propio flujo
+  window.updateReconMatchSummaryFromTable = updateReconMatchSummaryFromTable;
+})();
