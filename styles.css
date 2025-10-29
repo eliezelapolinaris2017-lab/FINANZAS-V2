@@ -1,0 +1,493 @@
+/* =========================================================
+   Nexus Finance — styles.css (tema oscuro elegante negro/dorado)
+   ========================================================= */
+
+/* ------------------ Variables de tema ------------------ */
+:root{
+  --primary: #0B0D10;   /* fondo */
+  --primary-2: #0E1116; /* variación */
+  --surface: #12151B;   /* tarjetas */
+  --surface-2:#141923;  /* tarjetas 2 */
+  --border: rgba(255,255,255,0.06);
+  --border-strong: rgba(199,162,75,0.45);
+  --text:   #F2F3F5;
+  --text-dim:#B7BCC7;
+  --muted:  #8A90A0;
+  --accent: #C7A24B;
+  --accent-2:#FFD991;
+
+  --radius: 12px;
+  --radius-sm: 10px;
+  --shadow: 0 8px 24px rgba(0,0,0,0.35);
+  --shadow-sm: 0 2px 6px rgba(0,0,0,0.35);
+
+  --sidebar-w: 280px;
+
+  --font: "Inter", "Segoe UI", Roboto, system-ui, -apple-system, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+/* ------------------ Reset & base ------------------ */
+*{ box-sizing:border-box; }
+html,body{ height:100%; }
+html{ scroll-behavior: smooth; }
+body{
+  margin:0;
+  font-family: var(--font);
+  color: var(--text);
+  background: radial-gradient(1200px 800px at -10% -10%, #0f1420 0%, #0c1017 45%, var(--primary) 100%);
+  line-height:1.45;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ------------------ Utilidades layout ------------------ */
+.main{
+  margin-left: var(--sidebar-w);
+  min-height: 100vh;
+  padding: 16px 18px 48px;
+}
+.grow{ flex:1; }
+.row{ display:flex; align-items:center; }
+.row.between{ justify-content:space-between; }
+.row.center{ justify-content:center; }
+.row.g{ gap:10px; }
+.grid{ display:grid; grid-template-columns: repeat(auto-fit,minmax(240px,1fr)); gap:14px; }
+.grid2{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.grid3{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.full{ grid-column:1 / -1; }
+.center{ text-align:center; }
+.right{ text-align:right; }
+.muted{ color: var(--muted); }
+
+/* ------------------ Sidebar ------------------ */
+.sidebar{
+  position: fixed;
+  inset:0 auto 0 0;
+  width: var(--sidebar-w);
+  background: linear-gradient(180deg, #0e1117 0%, #0b0d10 100%);
+  border-right: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  padding: 14px 12px;
+  z-index: 20;
+
+  display:flex;
+  flex-direction:column;
+  overflow: hidden;
+}
+.brand{
+  display:flex; align-items:center; gap:10px;
+  padding: 10px; border:1px solid var(--border); border-radius: var(--radius);
+  background: linear-gradient(180deg, #10141c, #0e1218);
+}
+.brand img{
+  width:42px; height:42px; object-fit:contain; border-radius:10px;
+  background:#0b0d10; border:1px solid var(--border);
+}
+.brand-info strong{ color:#fff; }
+.menu{
+  margin-top:12px; display:flex; flex-direction:column; gap:8px;
+
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+.menu::-webkit-scrollbar{ width: 8px; }
+.menu::-webkit-scrollbar-track{ background: #0c1016; border-radius: 8px; }
+.menu::-webkit-scrollbar-thumb{ background: rgba(199,162,75,0.35); border-radius: 8px; }
+.menu::-webkit-scrollbar-thumb:hover{ background: rgba(199,162,75,0.5); }
+
+.nav-btn{
+  width:100%;
+  text-align:left;
+  background: #0f131a;
+  border:1px solid var(--border);
+  color:#e8ecf2;
+  padding:10px 12px;
+  border-radius: 10px;
+  cursor:pointer;
+  transition: all .18s ease;
+}
+.nav-btn:hover{
+  border-color: rgba(199,162,75,0.35);
+  box-shadow: inset 0 0 0 1px rgba(199,162,75,0.25);
+}
+.nav-btn.active{
+  background: linear-gradient(180deg, rgba(199,162,75,0.18), rgba(199,162,75,0.08));
+  border-color: var(--border-strong);
+  color:#fff;
+}
+
+/* Sidebar móvil */
+#menuToggle{ display:none; }
+@media (max-width: 980px){
+  .main{ margin-left:0; padding-top:70px; }
+  .sidebar{
+    transform: translateX(-100%);
+    transition: transform .25s ease;
+  }
+  .sidebar.open{ transform: translateX(0); }
+  #menuToggle{
+    display:inline-flex;
+    align-items:center; justify-content:center;
+  }
+}
+
+/* ------------------ Topbar ------------------ */
+.topbar{
+  position: sticky; top:0; z-index:10;
+  display:flex; align-items:center; gap:8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  background: rgba(14,17,23,0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+/* ------------------ Tarjetas ------------------ */
+.card{
+  background: linear-gradient(180deg, var(--surface) 0%, var(--surface-2) 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 12px;
+}
+.card-title{
+  font-weight:700;
+  color: #f0d28b;
+  margin-bottom:10px;
+}
+
+/* ------------------ Botones ------------------ */
+.btn, .btn-outline{
+  appearance: none; border:1px solid transparent;
+  padding:10px 12px; border-radius:10px; cursor:pointer;
+  font-weight:600; letter-spacing:.2px;
+  transition: all .2s ease;
+}
+.btn{
+  background: linear-gradient(180deg, #caa952, #b58c2f);
+  color:#101214;
+  border-color: rgba(255,227,150,0.35);
+}
+.btn:hover{ filter: brightness(1.05); transform: translateY(-1px); }
+.btn:active{ transform: translateY(0); }
+
+.btn-outline{
+  background: #11151c;
+  color:#e6e6e6;
+  border-color: var(--border);
+}
+.btn-outline:hover{
+  border-color: var(--border-strong);
+  box-shadow: inset 0 0 0 1px rgba(199,162,75,0.25);
+}
+
+/* Accesibilidad foco */
+.btn:focus, .btn-outline:focus, .nav-btn:focus, input:focus, select:focus, textarea:focus{
+  outline: 2px solid rgba(199,162,75,0.45);
+  outline-offset: 2px;
+}
+
+/* ------------------ Formularios ------------------ */
+label{ font-size:.92rem; color:#d9dee7; display:flex; flex-direction:column; gap:6px; }
+input, select, textarea{
+  background: #0f141c;
+  color: #e6e8ed;
+  border:1px solid var(--border);
+  border-radius: 10px;
+  padding:10px 10px;
+  font-size: .95rem;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+input::placeholder, textarea::placeholder{ color:#7b8394; }
+input:focus, select:focus, textarea:focus{
+  border-color: rgba(199,162,75,0.45);
+  box-shadow: 0 0 0 2px rgba(199,162,75,0.12);
+}
+
+/* Inputs de archivo como botón */
+label.btn-outline input[type="file"]{ display:none; }
+
+/* ------------------ Tablas ------------------ */
+table{ width:100%; border-collapse: collapse; }
+table.data thead th{
+  background: #0f131a;
+  color:#e9edf4;
+  border-bottom:1px solid var(--border);
+  text-align:left;
+  padding:10px 12px;
+  font-size:.9rem;
+}
+table.data tbody td{
+  border-bottom:1px dashed rgba(255,255,255,0.07);
+  padding:10px 12px;
+  color:#dfe4ee;
+  vertical-align: top;
+  font-size:.95rem;
+}
+table.data tbody tr:hover{
+  background: rgba(199,162,75,0.06);
+}
+.row-actions{ white-space: nowrap; }
+.row-actions .btn-outline{ padding:6px 8px; font-size:.85rem; }
+
+/* Alinear columnas monetarias a la derecha */
+#expensesTable th:nth-child(5), #expensesTable td:nth-child(5),
+#incomesTable  th:nth-child(4), #incomesTable  td:nth-child(4),
+#paymentsTable th:nth-child(4), #paymentsTable td:nth-child(4),
+#personalTable th:nth-child(4), #personalTable td:nth-child(4),
+#reconTable    th:nth-child(2), #reconTable    td:nth-child(2),
+#reconTable    th:nth-child(3), #reconTable    td:nth-child(3),
+#reconTable    th:nth-child(4), #reconTable    td:nth-child(4),
+#invoicesTable th:nth-child(4), #invoicesTable td:nth-child(4),
+#quotesTable   th:nth-child(4), #quotesTable   td:nth-child(4){
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+/* ------------------ KPI y números ------------------ */
+.kpi{
+  font-size:1.6rem;
+  font-weight:800;
+  color:#fff;
+  background: #0f131a;
+  border:1px solid rgba(255,255,255,0.05);
+  border-radius: 14px;
+  padding: 14px;
+  text-align:right;
+  box-shadow: var(--shadow-sm);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+.num, .num *{
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+  letter-spacing: .1px;
+  text-align: right;
+}
+
+/* ------------------ Píldoras / Totales por categoría ------------------ */
+.pills,
+#expSumPills,
+#incSumMethods{
+  display:flex;
+  flex-wrap: wrap;
+  gap:8px;
+  margin-top:6px;
+}
+.pills span,
+#expSumPills span,
+#incSumMethods span{
+  flex: 0 1 180px;
+  display:flex; align-items:center; justify-content:space-between; gap:6px;
+  background: rgba(199,162,75,0.12);
+  border: 1px solid rgba(199,162,75,0.45);
+  border-radius: 9px;
+  padding:6px 8px;
+  color:#eaeaea;
+  box-shadow: var(--shadow-sm);
+  font-size:.86rem;
+}
+.pills span .value,
+#expSumPills span .value,
+#incSumMethods span .value{
+  color: var(--accent-2);
+  font-weight:700;
+  font-size:.9rem;
+}
+
+/* Tarjetas de totales compactas */
+.stats-wrap{
+  display:flex;
+  gap:8px;
+  align-items:center;
+  flex-wrap: wrap;
+}
+.stat-card{
+  background: #111218;
+  border:1px solid rgba(199,162,75,0.35);
+  border-radius: 12px;
+  padding: 8px 10px;
+  box-shadow: var(--shadow-sm);
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+}
+.stat-card .label{ color:#cfcfcf; font-size:.92rem; }
+.stat-card .value{ color: var(--accent-2); font-weight:700; }
+
+/* ------------------ Login pantalla completa (centrado) ------------------ */
+.fullscreen-login{
+  position: fixed;
+  inset:0;
+  background:
+    radial-gradient(900px 600px at 10% -10%, rgba(199,162,75,0.12), transparent 50%),
+    radial-gradient(1200px 800px at 100% 0%, rgba(199,162,75,0.08), transparent 50%),
+    linear-gradient(180deg,#0a0d12 0%, #070a0f 100%);
+  display:flex;
+  align-items:center; justify-content:center;
+  z-index: 50;
+  padding: 24px;
+  gap: 24px;
+}
+.login-hero{
+  text-align:center;
+  max-width: 420px;
+}
+.hero-logo{
+  width:72px; height:72px; object-fit:contain;
+  border:1px solid var(--border); border-radius: 16px; background:#0b0d10; margin-bottom:8px;
+}
+.hero-title{
+  margin:0; font-size: 2rem; color:#fff; letter-spacing:.3px;
+}
+.hero-subtitle{
+  margin:6px 0 0; color:#cfcfcf;
+}
+
+.login-wrap{ width:min(560px, 92vw); }
+.login-card{
+  background: linear-gradient(180deg,#0f131a, #0b0d10);
+  border:1px solid var(--border-strong);
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(199,162,75,0.08);
+  padding-bottom: 4px;
+}
+.login-card h2{ margin:10px 0 4px; color:#fff; text-align:center; }
+.login-card p{ color:#cfcfcf; text-align:center; }
+
+/* Ocultar login cuando no esté visible */
+.fullscreen-login.view:not(.visible){ display:none; }
+
+/* ------------------ Vistas SPA ------------------ */
+.view{ display:none; }
+.view.visible{ display:block; }
+
+/* ------------------ Toasts ------------------ */
+.toasts{
+  position: fixed; right:16px; bottom:16px; z-index:60;
+  display:flex; flex-direction:column; gap:8px;
+}
+.toast{
+  background: #101419;
+  color:#f6f7fb;
+  border:1px solid rgba(199,162,75,0.35);
+  padding:10px 12px;
+  border-radius:10px;
+  box-shadow: var(--shadow-sm);
+  transition: opacity .25s ease, transform .25s ease;
+}
+
+/* ------------------ Switch simple ------------------ */
+.switch{
+  position:relative; display:inline-flex; align-items:center; gap:8px; cursor:pointer;
+}
+.switch input{ display:none; }
+.switch span{
+  position:relative; width:44px; height:24px; border-radius:999px;
+  background:#1a1f28; border:1px solid var(--border);
+  display:inline-block;
+}
+.switch span::after{
+  content:""; position:absolute; top:2px; left:2px;
+  width:18px; height:18px; border-radius:50%;
+  background:#cfd6e3; transition: all .2s ease;
+}
+.switch input:checked + span{
+  background: linear-gradient(180deg, #caa952, #b58c2f);
+  border-color: rgba(255,227,150,0.35);
+}
+.switch input:checked + span::after{ transform: translateX(20px); background:#101214; }
+
+/* ------------------ Canvas simple ------------------ */
+#chart12{
+  width:100%; height:auto; display:block;
+  background:#0f131a; border:1px solid var(--border); border-radius: 12px;
+  padding:8px;
+}
+
+/* ------------------ Logo preview ------------------ */
+.logo-preview{
+  width:96px; height:96px; object-fit:contain;
+  border:1px solid var(--border); border-radius: 12px; background:#0b0d10;
+}
+
+/* ------------------ Totales bloques alinear ------------------ */
+.totals{ display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-top:8px; }
+.totals.right{ justify-content:flex-end; }
+.header-inline{
+  display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap: wrap;
+}
+
+/* ------------------ Conciliación bancaria (matching arriba) ------------------ */
+#reconciliations .card { display:flex; flex-direction:column; gap:8px; }
+#reconHeader{
+  display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap: wrap; margin-bottom:6px;
+}
+.match-summary{
+  display:flex; align-items:center; gap:10px; flex-wrap: wrap;
+}
+.match-card{
+  background: #111218;
+  border: 1px solid rgba(199,162,75,0.35);
+  border-radius: 10px;
+  padding: 8px 10px;
+  color: #f8f8f8;
+  font-size: 0.9rem;
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 150px;
+}
+.match-card .value{
+  color: var(--accent-2);
+  font-weight:700;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+/* ------------------ Nómina totales arriba ------------------ */
+#payments .card{ display:flex; flex-direction:column; gap:10px; }
+#payrollHeader{
+  display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap: wrap; margin-bottom:6px;
+}
+.payroll-summary{
+  display:flex; align-items:center; gap:10px; flex-wrap: wrap;
+}
+.payroll-card{
+  background:#111218; border:1px solid rgba(199,162,75,0.35); border-radius:10px;
+  padding:8px 10px; color:#f8f8f8; font-size:.9rem; font-weight:600; box-shadow: var(--shadow-sm);
+  display:flex; align-items:center; justify-content:space-between; min-width:160px;
+}
+.payroll-card .value{
+  color: var(--accent-2); font-weight:700;
+  font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+/* ------------------ Responsive grids ------------------ */
+@media (max-width: 1080px){
+  .grid3{ grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+@media (max-width: 720px){
+  .grid2, .grid3{ grid-template-columns: 1fr; }
+  .topbar{ position: sticky; top:6px; }
+}
+
+/* ------------------ Impresión (PDF blanco/negro) ------------------ */
+@media print{
+  body{ background:#fff; color:#000; }
+  .sidebar, .topbar, #toastContainer, #login{ display:none !important; }
+  .main{ margin:0; padding:0; }
+  .card{ border-color:#000; background:#fff; color:#000; box-shadow:none; }
+  table.data thead th{ border-bottom:1px solid #000; color:#000; background:#fff; }
+  table.data tbody td{ border-bottom:1px dotted #666; color:#000; }
+  .btn, .btn-outline{ display:none !important; }
+}
+
+/* ------------------ Pequeños detalles ------------------ */
+small, .small{ color: var(--text-dim); }
+a{ color: var(--accent); text-decoration:none; }
+a:hover{ text-decoration:underline; }
