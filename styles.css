@@ -480,3 +480,64 @@ a:hover{ text-decoration:underline; }
 
 /* ====== (Opcional) Ajuste de tablas para que no empujen los contenedores ====== */
 table.data{ table-layout: auto; }
+/* ====== FIX CONCILIACIÓN BANCARIA — MATCHINGS ARRIBA ====== */
+
+/* Contenedor general del módulo */
+#reconciliations .card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Encabezado del módulo de conciliación */
+#reconHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+/* Tarjetas de coincidencias (matching results) */
+.match-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.match-summary .match-card {
+  background: #111218;
+  border: 1px solid rgba(199,162,75,0.35);
+  border-radius: 10px;
+  padding: 8px 10px;
+  color: #f8f8f8;
+  font-size: 0.9rem;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 150px;
+}
+
+.match-summary .match-card .value {
+  color: var(--accent-2);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+/* Alinea el bloque de coincidencias con la cabecera */
+#reconHeader .card-title {
+  color: #f0d28b;
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+/* Compactar tabla debajo */
+#reconTable {
+  margin-top: 6px;
+}
