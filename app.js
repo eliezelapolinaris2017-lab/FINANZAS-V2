@@ -1523,3 +1523,68 @@ function calcPayrollNet() {
 // Recalcular en vivo
 ['payGross', 'payIRS', 'payDed1', 'payDed2', 'payOther']
   .forEach(id => document.getElementById(id)?.addEventListener('input', calcPayrollNet));
+// ===== Cálculo de nómina por % real sobre el bruto =====
+const _fmtNF = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+
+function _clampPct(v){
+  const n = Number(v);
+  if (!isFinite(n) || n < 0) return 0;
+  if (n > 100) return 100;
+  return n;
+}
+
+function calcPayrollNetPercent(){
+  const grossEl = document.getElementById('payGross');
+  if (!grossEl) return; // por si la vista aún no existe
+
+  const gross = Number(grossEl.value) || 0;
+
+  const irsPct   = _clampPct(document.getElementById('payIRS')?.value);
+  const d1Pct    = _clampPct(document.getElementById('payDed1')?.value);
+  const d2Pct    = _clampPct(document.getElementById('payDed2')?.value);
+  const otherPct = _clampPct(document.getElementById('payOther')?.value);
+
+  const d1Name = (document.getElementById('payDed1Name')?.value || 'Deducción 1').trim();
+  const d2Name = (document.getElementById('payDed2Name')?.value || 'Deducción 2').trim();
+  const oName  = (document.getElementById('payOtherName')?.value || 'Otras').trim();
+
+  // % reales sobre el bruto
+  const irsAmt   = gross * (irsPct   / 100);
+  const d1Amt    = gross * (d1Pct    / 100);
+  const d2Amt    = gross * (d2Pct    / 100);
+  const otherAmt = gross * (otherPct / 100);
+
+  const totalDeductions = irsAmt + d1Amt + d2Amt + otherAmt;
+  const net = Math.max(0, gross - totalDeductions);
+
+  const netEl = document.getElementById('payAmount');
+  if (netEl) netEl.value = net.toFixed(2);
+
+  const sum = document.getElementById('deductionSummary');
+  if (sum){
+    sum.innerHTML = `
+      <strong>Deducciones:</strong>
+      IRS ${irsPct || 0}% = ${_fmtNF.format(irsAmt)} ·
+      ${d1Name} ${d1Pct || 0}% = ${_fmtNF.format(d1Amt)} ·
+      ${d2Name} ${d2Pct || 0}% = ${_fmtNF.format(d2Amt)} ·
+      ${oName} ${otherPct || 0}% = ${_fmtNF.format(otherAmt)}
+      <br><strong>Total:</strong> ${_fmtNF.format(totalDeductions)} &nbsp;|&nbsp; 
+      <strong>Neto:</strong> ${_fmtNF.format(net)}
+    `;
+  }
+}
+
+// Escuchar cambios (solo si existen esos campos)
+['payGross','payIRS','payDed1','payDed2','payOther','payDed1Name','payDed2Name','payOtherName']
+  .forEach(id => {
+    const el = document.getElementById(id);
+    if (el){
+      el.addEventListener('input', calcPayrollNetPercent);
+      if (['payIRS','payDed1','payDed2','payOther'].includes(id)){
+        el.addEventListener('blur', ()=>{ el.value = _clampPct(el.value); calcPayrollNetPercent(); });
+      }
+    }
+  });
+
+// Llama una vez al cargar (no rompe si los campos no están)
+calcPayrollNetPercent();
