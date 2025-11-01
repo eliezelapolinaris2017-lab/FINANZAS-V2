@@ -1506,3 +1506,20 @@ document.addEventListener('DOMContentLoaded', wireAll);
   // Exponer por si quieres llamarlo manualmente desde tu propio flujo
   window.updateReconMatchSummaryFromTable = updateReconMatchSummaryFromTable;
 })();
+function calcPayrollNet() {
+  const gross = Number(document.getElementById('payGross').value) || 0;
+  const irs = Number(document.getElementById('payIRS').value) || 0;
+  const ded1 = Number(document.getElementById('payDed1').value) || 0;
+  const ded2 = Number(document.getElementById('payDed2').value) || 0;
+  const other = Number(document.getElementById('payOther').value) || 0;
+
+  const totalPct = irs + ded1 + ded2 + other;
+  const totalDed = (gross * totalPct) / 100;
+  const net = Math.max(0, gross - totalDed);
+
+  document.getElementById('payAmount').value = net.toFixed(2);
+}
+
+// Recalcular en vivo
+['payGross', 'payIRS', 'payDed1', 'payDed2', 'payOther']
+  .forEach(id => document.getElementById(id)?.addEventListener('input', calcPayrollNet));
