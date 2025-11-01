@@ -1506,3 +1506,58 @@ document.addEventListener('DOMContentLoaded', wireAll);
   // Exponer por si quieres llamarlo manualmente desde tu propio flujo
   window.updateReconMatchSummaryFromTable = updateReconMatchSummaryFromTable;
 })();
+// ===== NÓMINA SIMPLE: Reducción (%) y IRS (%) secuenciales =====
+const _fmtNF = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+
+function _clampPct(v){
+  const n = Number(v);
+  if (!isFinite(n) || n < 0) return 0;
+  if (n > 100) return 100;
+  return n;
+}
+
+function calcPayrollNetSimple(){
+  const gross = Number(document.getElementById('payGross')?.value) || 0;
+  const redPct = _clampPct(document.getElementById('payReduction')?.value);
+  const irsPct = _clampPct(document.getElementById('payIRS')?.value);
+
+  // Cálculo secuencial
+  let remaining = gross;
+
+  const reductionAmt = remaining * (redPct / 100);
+  remaining -= reductionAmt;
+
+  const irsAmt = remaining * (irsPct / 100);
+  remaining -= irsAmt;
+
+  const totalDeductions = reductionAmt + irsAmt;
+  const net = Math.max(0, remaining);
+
+  // Mostrar neto en el campo correspondiente
+  const netEl = document.getElementById('payAmount');
+  if (netEl) netEl.value = net.toFixed(2);
+
+  // Mostrar desglose visual
+  const sum = document.getElementById('deductionSummary');
+  if (sum){
+    sum.innerHTML = `
+      <strong>Desglose de Deducciones:</strong>
+      Reducción ${redPct || 0}% = ${_fmtNF.format(reductionAmt)} ·
+      IRS ${irsPct || 0}% = ${_fmtNF.format(irsAmt)}
+      <br><strong>Total:</strong> ${_fmtNF.format(totalDeductions)}
+      &nbsp;|&nbsp;<strong>Neto:</strong> ${_fmtNF.format(net)}
+    `;
+  }
+}
+
+// Detecta cambios en los campos relevantes
+['payGross','payReduction','payIRS'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el){
+    el.addEventListener('input', calcPayrollNetSimple);
+    el.addEventListener('blur', ()=>{ el.value = _clampPct(el.value); calcPayrollNetSimple(); });
+  }
+});
+
+// Inicializa
+calcPayrollNetSimple();
