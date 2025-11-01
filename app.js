@@ -1561,3 +1561,74 @@ function calcPayrollNetSimple(){
 
 // Inicializa
 calcPayrollNetSimple();
+// ===== NÓMINA SIMPLE CON REDUCCIÓN (%) Y IRS (%) =====
+const _fmtNF = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+
+function _clampPct(v) {
+  const n = Number(v);
+  if (!isFinite(n) || n < 0) return 0;
+  if (n > 100) return 100;
+  return n;
+}
+
+function calcPayrollNetSimple() {
+  const gross = Number(document.getElementById('payGross')?.value) || 0;
+  const redPct = _clampPct(document.getElementById('payReduction')?.value);
+  const irsPct = _clampPct(document.getElementById('payIRS')?.value);
+
+  let remaining = gross;
+
+  // Reducción 1ª
+  const reductionAmt = remaining * (redPct / 100);
+  remaining -= reductionAmt;
+
+  // IRS última
+  const irsAmt = remaining * (irsPct / 100);
+  remaining -= irsAmt;
+
+  const totalDeductions = reductionAmt + irsAmt;
+  const net = Math.max(0, remaining);
+
+  const netEl = document.getElementById('payAmount');
+  if (netEl) netEl.value = net.toFixed(2);
+
+  const sum = document.getElementById('deductionSummary');
+  if (sum) {
+    sum.innerHTML = `
+      <strong>Deducciones:</strong><br>
+      Reducción ${redPct || 0}% = ${_fmtNF.format(reductionAmt)}<br>
+      IRS ${irsPct || 0}% = ${_fmtNF.format(irsAmt)}<br>
+      <strong>Total:</strong> ${_fmtNF.format(totalDeductions)} |
+      <strong>Neto:</strong> ${_fmtNF.format(net)}
+    `;
+  }
+}
+
+// === Listeners correctos (ya sin el bug del 100 😎) ===
+const grossEl = document.getElementById('payGross');
+const redEl   = document.getElementById('payReduction');
+const irsEl   = document.getElementById('payIRS');
+
+if (grossEl) {
+  grossEl.addEventListener('input', calcPayrollNetSimple);
+}
+
+if (redEl) {
+  redEl.addEventListener('input', calcPayrollNetSimple);
+  redEl.addEventListener('blur', () => {
+    redEl.value = _clampPct(redEl.value);
+    calcPayrollNetSimple();
+  });
+}
+
+if (irsEl) {
+  irsEl.addEventListener('input', calcPayrollNetSimple);
+  irsEl.addEventListener('blur', () => {
+    irsEl.value = _clampPct(irsEl.value);
+    calcPayrollNetSimple();
+  });
+}
+
+// Inicializa
+calcPayrollNetSimple();
+
